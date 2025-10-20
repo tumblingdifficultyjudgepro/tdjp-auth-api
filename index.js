@@ -1,153 +1,209 @@
-﻿import "dotenv/config";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import rateLimit from "express-rate-limit";
-import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
-import pkg from "pg";
+﻿// index.js
+import 'dotenv/config';
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import pkg from 'pg';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
-const { Pool } = pkg;
-
-const {
-  DATABASE_URL,        // postgres://USER:PASS@HOST/DB
-  JWT_SECRET,          // סוד לחתימת JWT
-  PORT = 8080,
-  CORS_ORIGIN = "*"    // אפשר להגביל לדומיין האפליקציה שלך בפרודקשן
-} = process.env;
-
-if (!DATABASE_URL || !JWT_SECRET) {
-  console.error("Missing DATABASE_URL or JWT_SECRET env vars");
-  process.exit(1);
-}
-
-const pool = new Pool({ connectionString: DATABASE_URL, ssl: { rejectUnauthorized: false } });
 const app = express();
 
+/* ---------- בסיס ---------- */
+app.set('trust proxy', 1); // Render/Proxy
+
 app.use(helmet());
-app.use(cors({ origin: CORS_ORIGIN, credentials: false }));
-app.use(express.json());
+app.use(cors({ origin: '*', credentials: false }));
+app.use(express.json({ limit: '1mb' }));
 
-const authLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 100 });
-app.use("/auth", authLimiter);
+// תגית גרסה לזיהוי בדיפולוי
+const BUILD_TAG = 'auth-api v1.0.2';
 
-const signToken = (user) => jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "30d" });
-const authMiddleware = (req, res, next) => {
-  const h = req.headers.authorization || "";
-  const token = h.startsWith("Bearer ") ? h.slice(7) : null;
-  if (!token) return res.status(401).json({ error: "No token" });
-  try { req.user = jwt.verify(token, JWT_SECRET); next(); }
-  catch { return res.status(401).json({ error: "Invalid token" }); }
-};
+/* ---------- DB (Neon) ---------- */
+const { Pool } = pkg;
+const connectionString = process.env.DATABASE_URL;
+if (!connectionString) {
+    console.error('❌ DATABASE_URL is missing');
+    process.exit(1);
+}
 
-app.get("/health", (_, res) => res.json({ ok: true }));
-
-app.post("/auth/register", async (req, res) => {
-  try {
-    const { email, password, fullName, role = "judge" } = req.body || {};
-    if (!email || !password || password.length < 8) return res.status(400).json({ error: "Invalid email/password" });
-    if (!["judge", "coach"].includes(role)) return res.status(400).json({ error: "Invalid role" });
-
-    const pwHash = await bcrypt.hash(password, 12);
-    const q = `insert into users (email, password_hash, full_name, role)
-               values ($1,$2,$3,$4)
-               returning id, email, full_name, role, created_at`;
-    const { rows } = await pool.query(q, [email.toLowerCase(), pwHash, fullName || null, role]);
-    const user = rows[0];
-    const token = signToken(user);
-    return res.status(201).json({ user, token });
-  } catch (e) {
-    if (e.code === "23505") return res.status(409).json({ error: "Email already exists" });
-    console.error(e); return res.status(500).json({ error: "Server error" });
-  }
+const pool = new Pool({
+    connectionString,
+    ssl: { rejectUnauthorized: false }, // Neon דורש SSL בפרודקשן
 });
 
-app.post("/auth/login", async (req, res) => {
-  try {
-    const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: "Missing email/password" });
+// לוג עדין כדי לוודא שה-Host תקין
+try {
+    const host = new URL(connectionString).hostname;
+    console.log('DB host:', host);
+} catch { }
 
-    const { rows } = await pool.query("select * from users where email = $1 limit 1", [email.toLowerCase()]);
-    const user = rows[0];
-    if (!user) return res.status(401).json({ error: "Invalid credentials" });
+/* ---------- JWT ---------- */
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+const signToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
 
-    const ok = await bcrypt.compare(password, user.password_hash);
-    if (!ok) return res.status(401).json({ error: "Invalid credentials" });
+/* ---------- Rate limit ---------- */
+app.use(
+    rateLimit({
+        windowMs: 15 * 60 * 1000,
+        limit: 100,
+        standardHeaders: true,
+        legacyHeaders: false,
+    })
+);
 
-    const safeUser = { id: user.id, email: user.email, full_name: user.full_name, role: user.role, created_at: user.created_at };
-    const token = signToken(safeUser);
-    return res.json({ user: safeUser, token });
-  } catch (e) {
-    console.error(e); return res.status(500).json({ error: "Server error" });
-  }
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 20,
+    standardHeaders: true,
+    legacyHeaders: false,
 });
 
-app.get("/me", authMiddleware, async (req, res) => {
-  try {
-    const { rows } = await pool.query(
-      "select id,email,full_name,role,created_at from users where id = $1 limit 1",
-      [req.user.sub]
+/* ---------- סכימה (אופציונלי אך נוח) ---------- */
+async function ensureSchema() {
+    await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
+    await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      email text UNIQUE NOT NULL,
+      password_hash text NOT NULL,
+      full_name text NOT NULL,
+      role text NOT NULL DEFAULT 'judge',
+      created_at timestamptz NOT NULL DEFAULT now()
     );
-    return res.json({ user: rows[0] || null });
-  } catch (e) {
-    console.error(e); return res.status(500).json({ error: "Server error" });
-  }
-});
+  `);
+}
 
-app.put("/me", authMiddleware, async (req, res) => {
-  try {
-    const { fullName, role } = req.body || {};
-    if (role && !["judge","coach"].includes(role)) return res.status(400).json({ error: "Invalid role" });
-    const { rows } = await pool.query(
-      "update users set full_name = coalesce($1, full_name), role = coalesce($2, role) where id = $3 returning id,email,full_name,role,created_at",
-      [fullName ?? null, role ?? null, req.user.sub]
-    );
-    return res.json({ user: rows[0] });
-  } catch (e) {
-    console.error(e); return res.status(500).json({ error: "Server error" });
-  }
-});
-
-// ---- ADMIN USERS LIST (protected) ----
-app.get('/admin/users', authMiddleware, async (req, res) => {
+/* ---------- Health & Diagnostics ---------- */
+app.get('/health', async (_req, res) => {
     try {
-        // בקרת הרשאות בסיסית: רק coach (אפשר להחליף ל-'admin' אם תוסיף תפקיד)
-        const me = await pool.query('select role from users where id=$1', [req.user.sub]);
-        if (!me.rows[0] || me.rows[0].role !== 'coach') {
-            return res.status(403).json({ error: 'Forbidden' });
+        await pool.query('SELECT 1');
+        res.json({ ok: true });
+    } catch (e) {
+        console.error('Health DB error:', e);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+app.get('/', (_req, res) => {
+    res.json({
+        ok: true,
+        version: BUILD_TAG,
+        routes: ['/health', '/version', '/_debug/db', '/auth/register', '/auth/login'],
+    });
+});
+
+app.get('/version', (_req, res) => {
+    res.json({ version: BUILD_TAG });
+});
+
+app.get('/_debug/db', async (_req, res) => {
+    try {
+        const r = await pool.query('SELECT now() as now');
+        res.json({ ok: true, now: r.rows[0].now });
+    } catch (e) {
+        console.error('DB debug error:', e);
+        res.status(500).json({ ok: false, error: e.message });
+    }
+});
+
+/* ---------- Auth: Register ---------- */
+app.post('/auth/register', authLimiter, async (req, res) => {
+    try {
+        const { email, password, fullName, role = 'judge' } = req.body || {};
+
+        if (!email || !password || !fullName) {
+            return res.status(400).json({ error: 'Missing fields' });
         }
 
-        const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
-        const offset = Math.max(parseInt(req.query.offset || '0', 10), 0);
+        const exists = await pool.query('SELECT 1 FROM users WHERE email=$1', [email]);
+        if (exists.rowCount) {
+            return res.status(409).json({ error: 'Email already registered' });
+        }
 
-        const { rows } = await pool.query(
-            `select id, email, full_name, role, created_at
-       from users
-       order by created_at desc
-       limit $1 offset $2`,
-            [limit, offset]
+        const password_hash = await bcrypt.hash(password, 10);
+
+        const ins = await pool.query(
+            `INSERT INTO users (email, password_hash, full_name, role)
+       VALUES ($1,$2,$3,$4)
+       RETURNING id, email, full_name, role, created_at`,
+            [email, password_hash, fullName, role]
         );
-        res.json({ users: rows, limit, offset });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Server error' });
-    }
-});
 
-// ---- ADMIN USERS COUNT (protected) ----
-app.get('/admin/users/count', authMiddleware, async (req, res) => {
-    try {
-        const me = await pool.query('select role from users where id=$1', [req.user.sub]);
-        if (!me.rows[0] || me.rows[0].role !== 'coach') {
-            return res.status(403).json({ error: 'Forbidden' });
+        const user = ins.rows[0];
+        const token = signToken({ uid: user.id });
+
+        return res.status(201).json({
+            user: {
+                id: user.id,
+                email: user.email,
+                fullName: user.full_name,
+                role: user.role,
+                createdAt: user.created_at,
+            },
+            token,
+        });
+    } catch (e) {
+        if (e && e.code === '23505') {
+            return res.status(409).json({ error: 'Email already registered' });
         }
-        const { rows } = await pool.query('select count(*)::int as count from users');
-        res.json({ count: rows[0].count });
-    } catch (e) {
-        console.error(e);
-        res.status(500).json({ error: 'Server error' });
+        console.error('Register error:', e);
+        return res.status(500).json({ error: e.message || 'Server error' });
     }
 });
 
+/* ---------- Auth: Login ---------- */
+app.post('/auth/login', authLimiter, async (req, res) => {
+    try {
+        const { email, password } = req.body || {};
+        if (!email || !password) {
+            return res.status(400).json({ error: 'Missing fields' });
+        }
 
-app.listen(PORT, () => console.log(`API on :${PORT}`));
+        const q = await pool.query(
+            `SELECT id, email, full_name, role, password_hash FROM users WHERE email=$1`,
+            [email]
+        );
+        if (!q.rowCount) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const u = q.rows[0];
+        const ok = await bcrypt.compare(password, u.password_hash);
+        if (!ok) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const token = signToken({ uid: u.id });
+        return res.json({
+            user: { id: u.id, email: u.email, fullName: u.full_name, role: u.role },
+            token,
+        });
+    } catch (e) {
+        console.error('Login error:', e);
+        return res.status(500).json({ error: e.message || 'Server error' });
+    }
+});
+
+/* ---------- Global error handler ---------- */
+app.use((err, req, res, _next) => {
+    console.error('Global error handler:', err);
+    res.status(500).json({
+        error: err?.message || 'Unhandled server error',
+        where: `${req.method} ${req.url}`,
+    });
+});
+
+/* ---------- Start ---------- */
+const port = process.env.PORT || 10000;
+
+(async () => {
+    try {
+        await ensureSchema(); // אופציונלי
+        app.listen(port, () => console.log('API on :' + port));
+    } catch (e) {
+        console.error('Startup error:', e);
+        process.exit(1);
+    }
+})();

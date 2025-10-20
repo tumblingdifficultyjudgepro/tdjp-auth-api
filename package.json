@@ -1,10 +1,15 @@
 {
   "name": "tdjp-auth-api",
-  "version": "1.0.0",
+  "version": "1.0.2",
+  "private": true,
   "type": "module",
   "main": "index.js",
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
-    "start": "node index.js"
+    "start": "node --enable-source-maps index.js",
+    "start:debug": "NODE_ENV=development node --inspect=0.0.0.0:9229 --enable-source-maps index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
