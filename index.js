@@ -1,4 +1,5 @@
-﻿import 'dotenv/config';
+﻿// index.js
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -10,14 +11,13 @@ import jwt from 'jsonwebtoken';
 const app = express();
 
 /* ---------- בסיס ---------- */
-app.set('trust proxy', 1); // נדרש ב־Render/Proxy
-
+app.set('trust proxy', 1); // Render/Proxy
 app.use(helmet());
 app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 
-// גרסה לזיהוי בדיפלוי
-const BUILD_TAG = 'auth-api v1.0.2';
+// תגית גרסה לזיהוי בדיפלוי
+const BUILD_TAG = 'auth-api v1.0.3';
 
 /* ---------- DB (Neon) ---------- */
 const { Pool } = pkg;
@@ -26,12 +26,10 @@ if (!connectionString) {
     console.error('❌ DATABASE_URL is missing');
     process.exit(1);
 }
-
 const pool = new Pool({
     connectionString,
     ssl: { rejectUnauthorized: false },
 });
-
 try {
     const host = new URL(connectionString).hostname;
     console.log('DB host:', host);
@@ -42,15 +40,12 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const signToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' });
 
 /* ---------- Rate limit ---------- */
-app.use(
-    rateLimit({
-        windowMs: 15 * 60 * 1000,
-        limit: 100,
-        standardHeaders: true,
-        legacyHeaders: false,
-    })
-);
-
+app.use(rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 100,
+    standardHeaders: true,
+    legacyHeaders: false,
+}));
 const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     limit: 20,
@@ -58,7 +53,7 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-/* ---------- סכימה (יצירה אוטומטית בטבלת users) ---------- */
+/* ---------- סכימה (יצירה אוטומטית) ---------- */
 async function ensureSchema() {
     await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
     await pool.query(`
@@ -106,13 +101,20 @@ app.get('/_debug/db', async (_req, res) => {
     }
 });
 
+/* ---------- עוזר קטן ---------- */
+const normEmail = (s = '') => s.trim().toLowerCase();
+
 /* ---------- Auth: Register ---------- */
 app.post('/auth/register', authLimiter, async (req, res) => {
     try {
-        const { email, password, fullName, role = 'judge' } = req.body || {};
+        let { email, password, fullName, role = 'judge' } = req.body || {};
+        email = normEmail(email);
 
         if (!email || !password || !fullName) {
             return res.status(400).json({ error: 'Missing fields' });
+        }
+        if (password.length < 8) {
+            return res.status(400).json({ error: 'Password must be at least 8 chars' });
         }
 
         const exists = await pool.query('SELECT 1 FROM users WHERE email=$1', [email]);
@@ -121,12 +123,11 @@ app.post('/auth/register', authLimiter, async (req, res) => {
         }
 
         const password_hash = await bcrypt.hash(password, 10);
-
         const ins = await pool.query(
             `INSERT INTO users (email, password_hash, full_name, role)
        VALUES ($1,$2,$3,$4)
        RETURNING id, email, full_name, role, created_at`,
-            [email, password_hash, fullName, role]
+            [email, password_hash, fullName.trim(), role]
         );
 
         const user = ins.rows[0];
@@ -154,7 +155,9 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 /* ---------- Auth: Login ---------- */
 app.post('/auth/login', authLimiter, async (req, res) => {
     try {
-        const { email, password } = req.body || {};
+        let { email, password } = req.body || {};
+        email = normEmail(email);
+
         if (!email || !password) {
             return res.status(400).json({ error: 'Missing fields' });
         }
@@ -195,7 +198,6 @@ app.use((err, req, res, _next) => {
 
 /* ---------- Start ---------- */
 const port = process.env.PORT || 10000;
-
 (async () => {
     try {
         await ensureSchema();
