@@ -1,5 +1,4 @@
-﻿// index.js
-import 'dotenv/config';
+﻿import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -11,13 +10,13 @@ import jwt from 'jsonwebtoken';
 const app = express();
 
 /* ---------- בסיס ---------- */
-app.set('trust proxy', 1); // Render/Proxy
+app.set('trust proxy', 1); // נדרש ב־Render/Proxy
 
 app.use(helmet());
 app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 
-// תגית גרסה לזיהוי בדיפולוי
+// גרסה לזיהוי בדיפלוי
 const BUILD_TAG = 'auth-api v1.0.2';
 
 /* ---------- DB (Neon) ---------- */
@@ -30,10 +29,9 @@ if (!connectionString) {
 
 const pool = new Pool({
     connectionString,
-    ssl: { rejectUnauthorized: false }, // Neon דורש SSL בפרודקשן
+    ssl: { rejectUnauthorized: false },
 });
 
-// לוג עדין כדי לוודא שה-Host תקין
 try {
     const host = new URL(connectionString).hostname;
     console.log('DB host:', host);
@@ -60,7 +58,7 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-/* ---------- סכימה (אופציונלי אך נוח) ---------- */
+/* ---------- סכימה (יצירה אוטומטית בטבלת users) ---------- */
 async function ensureSchema() {
     await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
     await pool.query(`
@@ -200,7 +198,7 @@ const port = process.env.PORT || 10000;
 
 (async () => {
     try {
-        await ensureSchema(); // אופציונלי
+        await ensureSchema();
         app.listen(port, () => console.log('API on :' + port));
     } catch (e) {
         console.error('Startup error:', e);
