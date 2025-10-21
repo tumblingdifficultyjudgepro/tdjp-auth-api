@@ -1,4 +1,4 @@
-﻿// index.js
+// index.js
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
@@ -10,20 +10,20 @@ import jwt from 'jsonwebtoken';
 
 const app = express();
 
-/* ---------- בסיס ---------- */
+/* ---------- ???? ---------- */
 app.set('trust proxy', 1); // Render/Proxy
 app.use(helmet());
 app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 
-// תגית גרסה לזיהוי בדיפלוי
-const BUILD_TAG = 'auth-api v1.0.3';
+// ???? ???? ?????? ???????
+const BUILD_TAG = 'auth-api v1.0.4';
 
 /* ---------- DB (Neon) ---------- */
 const { Pool } = pkg;
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) {
-    console.error('❌ DATABASE_URL is missing');
+    console.error('? DATABASE_URL is missing');
     process.exit(1);
 }
 const pool = new Pool({
@@ -53,7 +53,7 @@ const authLimiter = rateLimit({
     legacyHeaders: false,
 });
 
-/* ---------- סכימה (יצירה אוטומטית) ---------- */
+/* ---------- ????? (????? ????????) ---------- */
 async function ensureSchema() {
     await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
     await pool.query(`
@@ -101,7 +101,7 @@ app.get('/_debug/db', async (_req, res) => {
     }
 });
 
-/* ---------- עוזר קטן ---------- */
+/* ---------- ???? ??? ---------- */
 const normEmail = (s = '') => s.trim().toLowerCase();
 
 /* ---------- Auth: Register ---------- */
