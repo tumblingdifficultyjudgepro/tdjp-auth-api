@@ -23,7 +23,7 @@ const BUILD_TAG = 'auth-api v1.1.1'; // היה 1.1.0
 const ALLOWED_COUNTRIES = ['ישראל', 'בריטניה', 'ארצות הברית', 'רוסיה', 'אוקראינה', 'סין'];
 const ALLOWED_CLUBS = ['מכבי אקרוג\'ים', 'הפועל תל אביב', 'שער הנגב', 'מכבי קריית אונו']; // תרחיב בהמשך
 const JUDGE_LEVELS = ['מתחיל', 'מתקדם', 'בינלאומי'];
-const BREVET_LEVELS = ['1', '2', '3'];
+const BREVET_LEVELS = ['1', '2', '3', '4'];
 
 /* ---------- DB (Neon) ---------- */
 const { Pool } = pkg;
