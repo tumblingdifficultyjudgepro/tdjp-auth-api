@@ -17,7 +17,7 @@ app.use(helmet());
 app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 
-const BUILD_TAG = 'auth-api v1.1.0';
+const BUILD_TAG = 'auth-api v1.1.1'; // היה 1.1.0
 
 /* ---------- קבועים לאימותי טופס ---------- */
 const ALLOWED_COUNTRIES = ['ישראל', 'בריטניה', 'ארצות הברית', 'רוסיה', 'אוקראינה', 'סין'];
