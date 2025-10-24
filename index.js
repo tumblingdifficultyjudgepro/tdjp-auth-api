@@ -148,6 +148,18 @@ app.get('/', (_req, res) => {
 
 app.get('/version', (_req, res) => res.json({ version: BUILD_TAG }));
 
+// מי רץ? עוזר לוודא שאנחנו על הבילד הנכון
+app.get('/whoami', (_req, res) => {
+    res.json({
+        version: BUILD_TAG,
+        node: process.version,
+        env: process.env.NODE_ENV || 'dev',
+        commit: process.env.RENDER_GIT_COMMIT || process.env.COMMIT || null,
+        startedAt: new Date().toISOString()
+    });
+});
+
+
 app.get('/_debug/db', async (_req, res) => {
     try {
         const r = await pool.query('SELECT now() as now');
