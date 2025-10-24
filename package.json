@@ -8,7 +8,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "start": "node --enable-source-maps index.js",
+    "start": "node index.js",
     "start:debug": "NODE_ENV=development node --inspect=0.0.0.0:9229 --enable-source-maps index.js"
   },
   "dependencies": {
@@ -19,6 +19,6 @@
     "express-rate-limit": "^7.0.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.11.3"
+    "pg": "^8.11.5"
   }
 }
