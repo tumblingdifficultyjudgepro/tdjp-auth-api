@@ -17,11 +17,11 @@ app.use(helmet());
 app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 
-const BUILD_TAG = 'auth-api v1.2.0';
+const BUILD_TAG = 'auth-api v1.3.0';
 
 /* ---------- Constants ---------- */
 const ALLOWED_COUNTRIES = ['ישראל', 'בריטניה', 'ארצות הברית', 'רוסיה', 'אוקראינה', 'סין'];
-const ALLOWED_CLUBS = ['מכבי אקרוג\'ים', 'הפועל תל אביב', 'שער הנגב', 'מכבי קריית אונו'];
+const ALLOWED_CLUBS = ["מכבי אקרוג'ים", 'הפועל תל אביב', 'שער הנגב', 'מכבי קריית אונו'];
 const JUDGE_LEVELS = ['מתחיל', 'מתקדם', 'בינלאומי'];
 const BREVET_LEVELS = ['1', '2', '3', '4'];
 
@@ -65,7 +65,6 @@ function normalizeToE164(countryName, phoneRaw) {
     const digits = s.replace(/[^\d]/g, '');
     if (!digits) return null;
     const e164 = '+' + digits;
-    // כלל אורך בסיסי של E.164
     if (digits.length < 8 || digits.length > 15) return null;
     return e164;
   }
@@ -73,24 +72,88 @@ function normalizeToE164(countryName, phoneRaw) {
   // לא מתחיל ב-+ → נסמוך על המדינה כדי לבנות E.164
   if (!meta) return null;
 
-  // הוצאת כל תווים שאינם ספרות
   let local = s.replace(/[^\d]/g, '');
   if (!local) return null;
 
-  // ברוב המדינות יש '0' מוביל בקידומת המקומית – נחתוך אחד אם נדרש
   if (meta.dropLeadingZero && local.startsWith('0')) local = local.replace(/^0+/, '');
-  // בדיקת טווחי אורך סבירים למספרים מקומיים (היוריסטיקה עדינה)
   if (meta.min && local.length < meta.min) return null;
   if (meta.max && local.length > meta.max) return null;
 
-  const full = '+' + meta.dial + local;
-  // בדיקת אורך E.164 כללי
-  const digits = (meta.dial + local);
-  if (digits.length < 8 || digits.length > 15) return null;
+  const fullDigits = meta.dial + local;
+  if (fullDigits.length < 8 || fullDigits.length > 15) return null;
 
-  return full;
+  return '+' + fullDigits;
 }
 
+/* ---------- i18n (he/en) for error messages ---------- */
+const EMAIL_RE = /^\S+@\S+\.\S+$/;
+
+function detectLang(req) {
+  const q = (req.query?.lang || '').toLowerCase();
+  const b = (req.body?.lang || '').toLowerCase();
+  const h = (req.headers['accept-language'] || '').toLowerCase();
+  if (q === 'he' || b === 'he') return 'he';
+  if (q === 'en' || b === 'en') return 'en';
+  if (h.startsWith('he')) return 'he';
+  return 'en';
+}
+
+const MSG = {
+  he: {
+    MISSING_FIELDS:    'חסרים שדות חובה',
+    EMAIL_INVALID:     'כתובת מייל לא תקינה',
+    PASSWORD_SHORT:    'סיסמה חייבת להיות באורך 8 תווים לפחות',
+    INVALID_COUNTRY:   'מדינה לא תקינה',
+    CLUB_REQUIRED:     'יש לבחור אגודה מהרשימה',
+    INVALID_JUDGE:     'דרגת שיפוט לא תקינה',
+    BREVET_REQUIRED:   'יש לבחור דרגת ברווה (1–4)',
+    BREVET_NOT_ALLOWED:'אסור לבחור דרגת ברווה כשלא מסומן שופט/ת',
+    EMAIL_TAKEN:       'האימייל כבר רשום במערכת',
+    PHONE_INVALID:     'מספר טלפון לא תקין',
+    PHONE_TAKEN:       'מספר הטלפון כבר רשום במערכת',
+    DUPLICATE:         'פריט כבר קיים',
+    SERVER:            'שגיאת שרת'
+  },
+  en: {
+    MISSING_FIELDS:    'Missing required fields',
+    EMAIL_INVALID:     'Invalid email address',
+    PASSWORD_SHORT:    'Password must be at least 8 characters',
+    INVALID_COUNTRY:   'Invalid country',
+    CLUB_REQUIRED:     'Club must be selected from the list',
+    INVALID_JUDGE:     'Invalid judge level',
+    BREVET_REQUIRED:   'Brevet level is required (1–4)',
+    BREVET_NOT_ALLOWED:'Brevet level is not allowed when not a judge',
+    EMAIL_TAKEN:       'Email is already registered',
+    PHONE_INVALID:     'Invalid phone number',
+    PHONE_TAKEN:       'Phone number is already registered',
+    DUPLICATE:         'Item already exists',
+    SERVER:            'Server error'
+  }
+};
+
+const ERR_META = {
+  MISSING_FIELDS:     { status: 400, field: null },
+  EMAIL_INVALID:      { status: 400, field: 'email' },
+  PASSWORD_SHORT:     { status: 400, field: 'password' },
+  INVALID_COUNTRY:    { status: 400, field: 'country' },
+  CLUB_REQUIRED:      { status: 400, field: 'club' },
+  INVALID_JUDGE:      { status: 400, field: 'judgeLevel' },
+  BREVET_REQUIRED:    { status: 400, field: 'brevetLevel' },
+  BREVET_NOT_ALLOWED: { status: 400, field: 'brevetLevel' },
+  EMAIL_TAKEN:        { status: 409, field: 'email' },
+  PHONE_INVALID:      { status: 400, field: 'phone' },
+  PHONE_TAKEN:        { status: 409, field: 'phone' },
+  DUPLICATE:          { status: 409, field: null },
+  SERVER:             { status: 500, field: null }
+};
+
+function sendErr(req, res, code, overrides = {}) {
+  const lang = overrides.lang || detectLang(req);
+  const meta = ERR_META[code] || ERR_META.SERVER;
+  const message = overrides.message || (MSG[lang]?.[code] || MSG[lang]?.SERVER || 'Error');
+  const field = overrides.field !== undefined ? overrides.field : meta.field;
+  return res.status(overrides.status || meta.status).json({ ok: false, code, error: message, field, lang });
+}
 
 /* ---------- Schema (DDL) ---------- */
 async function ensureSchema() {
@@ -208,21 +271,27 @@ app.get('/_debug/db', async (_req, res) => {
   catch (e) { console.error('DB debug error:', e); res.status(500).json({ ok: false, error: e.message }); }
 });
 
-/* ---------- Registration validation ---------- */
-function validateRegistration({ email, password, firstName, lastName, country, isCoach, club, isJudge, judgeLevel, brevetLevel }) {
-  if (!email || !password || !firstName || !lastName) return 'Missing fields';
-  if (password.length < 8) return 'Password must be at least 8 chars';
-  if (!country || !ALLOWED_COUNTRIES.includes(country)) return 'Invalid country';
+/* ---------- Registration validation (codes) ---------- */
+function validateRegistration({
+  email, password, firstName, lastName,
+  country, isCoach, club, isJudge, judgeLevel, brevetLevel
+}) {
+  if (!email || !password || !firstName || !lastName) return { code: 'MISSING_FIELDS', field: null };
+  if (!EMAIL_RE.test(String(email))) return { code: 'EMAIL_INVALID', field: 'email' };
+  if (String(password).length < 8) return { code: 'PASSWORD_SHORT', field: 'password' };
+  if (!country || !ALLOWED_COUNTRIES.includes(country)) return { code: 'INVALID_COUNTRY', field: 'country' };
   if (isCoach) {
-    if (!club || !ALLOWED_CLUBS.includes(club)) return 'Club is required and must be from list';
+    if (!club || !ALLOWED_CLUBS.includes(club)) return { code: 'CLUB_REQUIRED', field: 'club' };
   }
   if (isJudge) {
-    if (!judgeLevel || !JUDGE_LEVELS.includes(judgeLevel)) return 'Invalid judge level';
+    if (!judgeLevel || !JUDGE_LEVELS.includes(judgeLevel)) return { code: 'INVALID_JUDGE', field: 'judgeLevel' };
     if (judgeLevel === 'בינלאומי') {
-      if (!brevetLevel || !BREVET_LEVELS.includes(String(brevetLevel))) return 'Brevet level required (1/2/3/4)';
+      if (!brevetLevel || !BREVET_LEVELS.includes(String(brevetLevel))) {
+        return { code: 'BREVET_REQUIRED', field: 'brevetLevel' };
+      }
     }
   } else if (brevetLevel) {
-    return 'Brevet level not allowed when not a judge';
+    return { code: 'BREVET_NOT_ALLOWED', field: 'brevetLevel' };
   }
   return null;
 }
@@ -241,6 +310,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 
     email = normEmail(email);
 
+    // תמיכה ב-fullName
     if ((!firstName || !lastName) && fullName) {
       const p = splitFullName(fullName);
       firstName = firstName || p.first;
@@ -248,21 +318,24 @@ app.post('/auth/register', authLimiter, async (req, res) => {
     }
     const full_name = toFullName(firstName, lastName);
 
-    const err = validateRegistration({ email, password, firstName, lastName, country, isCoach, club, isJudge, judgeLevel, brevetLevel });
-    if (err) return res.status(400).json({ error: err });
+    // ולידציה לוגית + אימייל
+    const v = validateRegistration({ email, password, firstName, lastName, country, isCoach, club, isJudge, judgeLevel, brevetLevel });
+    if (v) return sendErr(req, res, v.code, { field: v.field });
 
-    // 🆕 נירמול טלפון ובדיקת ייחודיות
+    // נירמול טלפון ובדיקת ייחודיות
     const phone_e164 = phone ? normalizeToE164(country, phone) : null;
     if (phone && !phone_e164) {
-      return res.status(400).json({ error: 'Invalid phone number', code: 'PHONE_INVALID' });
+      return sendErr(req, res, 'PHONE_INVALID');
     }
 
+    // אימייל קיים?
     const emailExists = await pool.query(`SELECT 1 FROM users WHERE email=$1`, [email]);
-    if (emailExists.rowCount) return res.status(409).json({ error: 'Email already registered' });
+    if (emailExists.rowCount) return sendErr(req, res, 'EMAIL_TAKEN');
 
+    // טלפון קיים?
     if (phone_e164) {
       const phoneExists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1`, [phone_e164]);
-      if (phoneExists.rowCount) return res.status(409).json({ error: 'Phone already registered', code: 'PHONE_TAKEN' });
+      if (phoneExists.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
     }
 
     const password_hash = await bcrypt.hash(password, 10);
@@ -295,9 +368,19 @@ app.post('/auth/register', authLimiter, async (req, res) => {
       token
     });
   } catch (e) {
-    if (e?.code === '23505') return res.status(409).json({ error: 'Email or phone already registered' });
+    // 23505 = unique_violation
+    if (e?.code === '23505') {
+      const constraint = e?.constraint || '';
+      if (constraint.includes('users_phone_e164_unique')) {
+        return sendErr(req, res, 'PHONE_TAKEN');
+      }
+      if (constraint.includes('users_email_key')) {
+        return sendErr(req, res, 'EMAIL_TAKEN');
+      }
+      return sendErr(req, res, 'DUPLICATE');
+    }
     console.error('Register error:', e);
-    return res.status(500).json({ error: e.message || 'Server error' });
+    return sendErr(req, res, 'SERVER', { status: 500, message: e?.message });
   }
 });
 
@@ -376,16 +459,16 @@ app.put('/me', requireAuth, async (req, res) => {
       }
     }
 
-    // 🆕 נירמול טלפון ובדיקת ייחודיות (כשנשלח phone)
+    // נירמול טלפון + ייחודיות
     let phone_e164;
     if (phone !== undefined) {
       phone_e164 = phone ? normalizeToE164(country, phone) : null;
       if (phone && !phone_e164) {
-        return res.status(400).json({ error: 'Invalid phone number', code: 'PHONE_INVALID' });
+        return sendErr(req, res, 'PHONE_INVALID');
       }
       if (phone_e164) {
         const exists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2`, [phone_e164, req.user.uid]);
-        if (exists.rowCount) return res.status(409).json({ error: 'Phone already registered', code: 'PHONE_TAKEN' });
+        if (exists.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
       }
     }
 
@@ -534,16 +617,16 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
       }
     }
 
-    // 🆕 נירמול טלפון ובדיקת ייחודיות (כשנשלח phone)
+    // נירמול טלפון + ייחודיות (כשנשלח phone)
     let phone_e164;
     if (phone !== undefined) {
       phone_e164 = phone ? normalizeToE164(country, phone) : null;
       if (phone && !phone_e164) {
-        return res.status(400).json({ error: 'Invalid phone number', code: 'PHONE_INVALID' });
+        return sendErr(req, res, 'PHONE_INVALID');
       }
       if (phone_e164) {
         const exists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2`, [phone_e164, req.params.id]);
-        if (exists.rowCount) return res.status(409).json({ error: 'Phone already registered', code: 'PHONE_TAKEN' });
+        if (exists.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
       }
     }
 
@@ -559,7 +642,7 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     add('first_name',   first_name ?? null);
     add('last_name',    last_name ?? null);
     add('phone',        phone ?? null);
-    add('phone_e164',   phone_e164 ?? null); // 🆕
+    add('phone_e164',   phone_e164 ?? null);
     add('country',      country ?? null);
     add('club',         club ?? null);
     add('is_coach',     (typeof is_coach === 'boolean') ? is_coach : null);
