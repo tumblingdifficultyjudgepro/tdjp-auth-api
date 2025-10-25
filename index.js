@@ -404,6 +404,102 @@ app.get('/admin/users', requireAuth, requireAdmin, async (req, res) => {
   res.json({ items: q.rows, nextOffset: offset + q.rowCount });
 });
 
+app.get('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  const q = await pool.query(
+    `SELECT id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
+            judge_level, brevet_level, avatar_url, role, is_admin, created_at
+       FROM users WHERE id=$1`,
+    [req.params.id]
+  );
+  if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
+  res.json({ user: q.rows[0] });
+});
+
+app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const b = req.body || {};
+
+    // קבלת ערכים גם ב-snake_case וגם ב-camelCase
+    const first_name   = b.first_name   ?? b.firstName;
+    const last_name    = b.last_name    ?? b.lastName;
+    const email        = b.email ? normEmail(b.email) : undefined;
+    const phone        = b.phone;
+    const country      = b.country;
+    const club         = b.club;
+    const is_coach     = (typeof b.is_coach === 'boolean') ? b.is_coach : b.isCoach;
+    const is_judge     = (typeof b.is_judge === 'boolean') ? b.is_judge : b.isJudge;
+    const judge_level  = b.judge_level  ?? b.judgeLevel;
+    const brevet_level = b.brevet_level ?? (b.brevetLevel != null ? String(b.brevetLevel) : undefined);
+    const avatar_url   = b.avatar_url   ?? b.avatarUrl;
+
+    // ולידציות בסיסיות (תואם למה שיש אצלך ב-/me)
+    if (country !== undefined && country !== null && !ALLOWED_COUNTRIES.includes(country)) {
+      return res.status(400).json({ error: 'Invalid country' });
+    }
+    if (is_coach !== undefined && is_coach) {
+      if (club !== undefined && club !== null && !ALLOWED_CLUBS.includes(club)) {
+        return res.status(400).json({ error: 'Club must be from list' });
+      }
+    }
+    if (is_judge !== undefined && is_judge) {
+      if (judge_level !== undefined && judge_level !== null && !JUDGE_LEVELS.includes(judge_level)) {
+        return res.status(400).json({ error: 'Invalid judge level' });
+      }
+      if (judge_level === 'בינלאומי') {
+        if (brevet_level === undefined || !BREVET_LEVELS.includes(String(brevet_level))) {
+          return res.status(400).json({ error: 'Brevet level required (1/2/3/4)' });
+        }
+      }
+    }
+
+    // בונים SET דינמי רק לשדות שהגיעו
+    const sets = [];
+    const vals = [];
+    const add = (col, val) => {
+      if (val !== undefined) {            // undefined = לא נשלח; null = נשלח ורוצים לאפס
+        sets.push(`${col} = $${sets.length + 1}`);
+        vals.push(val);
+      }
+    };
+
+    add('first_name',   first_name ?? null);
+    add('last_name',    last_name ?? null);
+    add('phone',        phone ?? null);
+    add('country',      country ?? null);
+    add('club',         club ?? null);
+    add('is_coach',     (typeof is_coach === 'boolean') ? is_coach : null);
+    add('is_judge',     (typeof is_judge === 'boolean') ? is_judge : null);
+    add('judge_level',  judge_level ?? null);
+    add('brevet_level', brevet_level ?? null);
+    add('avatar_url',   avatar_url ?? null);
+    add('email',        email ?? null);
+
+    // נעדכן גם full_name אם ניתן
+    if (first_name !== undefined || last_name !== undefined) {
+      const full_name = toFullName(first_name ?? null, last_name ?? null);
+      add('full_name', full_name || null);
+    }
+
+    if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
+
+    // ה-ID תמיד אחרון
+    vals.push(req.params.id);
+
+    const q = await pool.query(
+      `UPDATE users SET ${sets.join(', ')} WHERE id = $${vals.length}
+         RETURNING id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
+                   judge_level, brevet_level, avatar_url, role, is_admin, created_at`,
+      vals
+    );
+    if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
+
+    res.json({ user: q.rows[0] });
+  } catch (e) {
+    console.error('Admin PATCH error:', e);
+    res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
 app.put('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
   const { isAdmin } = req.body || {};
   if (typeof isAdmin !== 'boolean') return res.status(400).json({ error: 'Missing isAdmin' });
