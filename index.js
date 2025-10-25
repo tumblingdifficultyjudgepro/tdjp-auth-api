@@ -8,8 +8,6 @@ import pkg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-// 🆕 נירמול מספרי טלפון
-import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 const app = express();
 
@@ -45,26 +43,54 @@ const signToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false }));
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
 
-/* ---------- Phone helpers (🆕) ---------- */
-const COUNTRY_NAME_TO_ISO2 = {
-  'ישראל': 'IL',
-  'בריטניה': 'GB',
-  'ארצות הברית': 'US',
-  'רוסיה': 'RU',
-  'אוקראינה': 'UA',
-  'סין': 'CN',
+/* ---------- Phone helpers (ללא תלות) ---------- */
+// מיפוי מדינות לשם → קידומת בינלאומית וכללי חיתוך '0' מוביל
+const COUNTRY_NAME_TO_META = {
+  'ישראל':        { dial: '972', dropLeadingZero: true,  min: 8,  max: 10 },
+  'בריטניה':      { dial: '44',  dropLeadingZero: true,  min: 9,  max: 10 },
+  'ארצות הברית':  { dial: '1',   dropLeadingZero: false, min: 10, max: 10 },
+  'רוסיה':        { dial: '7',   dropLeadingZero: true,  min: 10, max: 10 },
+  'אוקראינה':     { dial: '380', dropLeadingZero: true,  min: 9,  max: 9  },
+  'סין':          { dial: '86',  dropLeadingZero: false, min: 11, max: 11 },
 };
+
+// מחזיר "+<digits>" או null אם לא תקין (באורך E.164 8–15 ספרות בדרך כלל)
 function normalizeToE164(countryName, phoneRaw) {
   if (!phoneRaw) return null;
-  const iso2 = COUNTRY_NAME_TO_ISO2[countryName] || undefined;
-  try {
-    const p = parsePhoneNumberFromString(String(phoneRaw), iso2);
-    if (!p || !p.isValid()) return null;
-    return p.number; // "+9725..."
-  } catch {
-    return null;
+  const meta = COUNTRY_NAME_TO_META[countryName];
+  let s = String(phoneRaw).trim();
+
+  // אם הגיע כבר עם "+" – ננרמל ונבדוק
+  if (s.startsWith('+')) {
+    const digits = s.replace(/[^\d]/g, '');
+    if (!digits) return null;
+    const e164 = '+' + digits;
+    // כלל אורך בסיסי של E.164
+    if (digits.length < 8 || digits.length > 15) return null;
+    return e164;
   }
+
+  // לא מתחיל ב-+ → נסמוך על המדינה כדי לבנות E.164
+  if (!meta) return null;
+
+  // הוצאת כל תווים שאינם ספרות
+  let local = s.replace(/[^\d]/g, '');
+  if (!local) return null;
+
+  // ברוב המדינות יש '0' מוביל בקידומת המקומית – נחתוך אחד אם נדרש
+  if (meta.dropLeadingZero && local.startsWith('0')) local = local.replace(/^0+/, '');
+  // בדיקת טווחי אורך סבירים למספרים מקומיים (היוריסטיקה עדינה)
+  if (meta.min && local.length < meta.min) return null;
+  if (meta.max && local.length > meta.max) return null;
+
+  const full = '+' + meta.dial + local;
+  // בדיקת אורך E.164 כללי
+  const digits = (meta.dial + local);
+  if (digits.length < 8 || digits.length > 15) return null;
+
+  return full;
 }
+
 
 /* ---------- Schema (DDL) ---------- */
 async function ensureSchema() {
