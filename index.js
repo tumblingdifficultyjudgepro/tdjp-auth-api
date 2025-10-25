@@ -8,6 +8,7 @@ import pkg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 
 const app = express();
 
@@ -43,6 +44,57 @@ const signToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false }));
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
 
+/* ---------- Email & SMS (verification) ---------- */
+// 6 ספרות רנדומליות
+function gen6() {
+  return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+// Nodemailer
+const SMTP_URL = process.env.SMTP_URL || null; // דוגמה: "smtps://user:pass@smtp.example.com:465"
+const mailer = SMTP_URL ? nodemailer.createTransport(SMTP_URL) : null;
+
+async function sendVerificationEmail(to, code) {
+  const subject = 'TDJP – קוד אימות / Verification code';
+  const textHe = `קוד האימות שלך הוא: ${code}`;
+  const textEn = `Your verification code is: ${code}`;
+  const text = `TDJP\n\n${textHe}\n${textEn}\n`;
+  if (!mailer) {
+    console.log('[DEV] Email verification to:', to, 'code:', code);
+    return;
+  }
+  await mailer.sendMail({
+    from: 'TDJP <no-reply@tdjp.app>',
+    to,
+    subject,
+    text,
+  });
+}
+
+// Twilio (אופציונלי)
+let twilioClient = null;
+if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
+  const twilio = await import('twilio').then(m => m.default || m);
+  twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+}
+// שם שולח אלפאנומרי דורש אישור במדינות רבות; אחרת שימוש במספר מאומת
+const TWILIO_FROM = process.env.TWILIO_FROM || 'TDJP';
+
+async function sendVerificationSms(toE164, code) {
+  const bodyHe = `קוד האימות שלך הוא: ${code}`;
+  const bodyEn = `Your verification code is: ${code}`;
+  const body = `TDJP: ${bodyHe} | ${bodyEn}`;
+  if (!twilioClient) {
+    console.log('[DEV] SMS verification to:', toE164, 'code:', code);
+    return;
+  }
+  await twilioClient.messages.create({
+    to: toE164,
+    from: TWILIO_FROM,
+    body,
+  });
+}
+
 /* ---------- Phone helpers (ללא תלות) ---------- */
 // מיפוי מדינות לשם → קידומת בינלאומית וכללי חיתוך '0' מוביל
 const COUNTRY_NAME_TO_META = {
@@ -60,7 +112,6 @@ function normalizeToE164(countryName, phoneRaw) {
   const meta = COUNTRY_NAME_TO_META[countryName];
   let s = String(phoneRaw).trim();
 
-  // אם הגיע כבר עם "+" – ננרמל ונבדוק
   if (s.startsWith('+')) {
     const digits = s.replace(/[^\d]/g, '');
     if (!digits) return null;
@@ -69,7 +120,6 @@ function normalizeToE164(countryName, phoneRaw) {
     return e164;
   }
 
-  // לא מתחיל ב-+ → נסמוך על המדינה כדי לבנות E.164
   if (!meta) return null;
 
   let local = s.replace(/[^\d]/g, '');
@@ -159,6 +209,7 @@ function sendErr(req, res, code, overrides = {}) {
 async function ensureSchema() {
   await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
 
+  // users
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -168,8 +219,7 @@ async function ensureSchema() {
       last_name     text,
       full_name     text NOT NULL,
       phone         text,
-      -- 🆕 טלפון מנורמל ל-E.164 לאכיפת ייחודיות
-      phone_e164    text,
+      phone_e164    text,              -- מנורמל ל-E.164
       country       text,
       club          text,
       is_coach      boolean NOT NULL DEFAULT false,
@@ -200,6 +250,25 @@ async function ensureSchema() {
     WHERE full_name IS NOT NULL;
   `);
 
+  // verifications (OTP)
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS verifications (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      purpose     text NOT NULL,                -- 'register'
+      channel     text NOT NULL,                -- 'email' | 'phone'
+      dest        text NOT NULL,                -- כתובת אימייל או E.164
+      code        text NOT NULL,                -- 6 ספרות
+      expires_at  timestamptz NOT NULL,
+      attempts    int NOT NULL DEFAULT 0,
+      used        boolean NOT NULL DEFAULT false,
+      payload     jsonb NOT NULL,               -- כל נתוני המשתמש להרשמה
+      created_at  timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_verifications_dest ON verifications(dest);`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_verifications_created ON verifications(created_at DESC);`);
+
+  // password_reset
   await pool.query(`
     CREATE TABLE IF NOT EXISTS password_resets (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -213,11 +282,10 @@ async function ensureSchema() {
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);`);
-  // 🆕 אינדקס ייחודי מותנה (NULL מותר, כפילויות לא)
   await pool.query(`
     CREATE UNIQUE INDEX IF NOT EXISTS users_phone_e164_unique
-      ON users(phone_e164)
-      WHERE phone_e164 IS NOT NULL;
+    ON users(phone_e164)
+    WHERE phone_e164 IS NOT NULL;
   `);
 }
 
@@ -259,7 +327,14 @@ app.get('/health', async (_req, res) => {
 app.get('/', (_req, res) => {
   res.json({
     ok: true, version: BUILD_TAG,
-    routes: ['/health','/version','/_debug/db','/auth/register','/auth/login','/auth/request-password-reset','/auth/reset-password','/me (GET/PUT)','/admin/users (GET, PUT /:id, PATCH /:id, DELETE /:id)'],
+    routes: [
+      '/health','/version','/_debug/db',
+      '/auth/register/start','/auth/register/verify',
+      '/auth/register','/auth/login',
+      '/auth/request-password-reset','/auth/reset-password',
+      '/me (GET/PUT)',
+      '/admin/users (GET, PUT /:id, PATCH /:id, DELETE /:id)'
+    ],
   });
 });
 app.get('/version', (_req, res) => res.json({ version: BUILD_TAG }));
@@ -296,7 +371,151 @@ function validateRegistration({
   return null;
 }
 
-/* ---------- Auth: Register ---------- */
+/* ---------- Auth: Register (two-step) ---------- */
+// שלב א': קבלת נתוני הרשמה, בדיקות, שליחת קוד ויצירת רשומת אימות
+app.post('/auth/register/start', authLimiter, async (req, res) => {
+  try {
+    let {
+      channel, // 'email' | 'phone'
+      email, password,
+      firstName, lastName, fullName,
+      phone, country, club,
+      isCoach = false, isJudge = true,
+      judgeLevel = null, brevetLevel = null,
+      avatarUrl = null,
+      lang
+    } = req.body || {};
+    const _lang = lang || detectLang(req);
+
+    if (channel !== 'email' && channel !== 'phone') {
+      return sendErr(req, res, 'MISSING_FIELDS', { message: MSG[_lang].MISSING_FIELDS });
+    }
+
+    email = normEmail(email);
+
+    if ((!firstName || !lastName) && fullName) {
+      const p = splitFullName(fullName);
+      firstName = firstName || p.first;
+      lastName  = lastName  || p.last;
+    }
+    const full_name = toFullName(firstName, lastName);
+
+    const v = validateRegistration({ email, password, firstName, lastName, country, isCoach, club, isJudge, judgeLevel, brevetLevel });
+    if (v) return sendErr(req, res, v.code, { field: v.field });
+
+    const phone_e164 = phone ? normalizeToE164(country, phone) : null;
+    if (phone && !phone_e164) return sendErr(req, res, 'PHONE_INVALID');
+
+    const emailExists = await pool.query(`SELECT 1 FROM users WHERE email=$1`, [email]);
+    if (emailExists.rowCount) return sendErr(req, res, 'EMAIL_TAKEN');
+
+    if (phone_e164) {
+      const phoneExists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1`, [phone_e164]);
+      if (phoneExists.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
+    }
+
+    const code = gen6();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 דקות
+
+    const payload = {
+      email, password, firstName, lastName, full_name,
+      phone, phone_e164, country, club,
+      isCoach: !!isCoach, isJudge: !!isJudge,
+      judgeLevel, brevetLevel: brevetLevel ? String(brevetLevel) : null,
+      avatarUrl, role: (isJudge ? 'judge' : (isCoach ? 'coach' : 'user'))
+    };
+
+    const dest = channel === 'email' ? email : phone_e164;
+
+    const ins = await pool.query(
+      `INSERT INTO verifications (purpose, channel, dest, code, expires_at, payload)
+       VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+      ['register', channel, dest, code, expires, payload]
+    );
+
+    if (channel === 'email') await sendVerificationEmail(email, code);
+    else await sendVerificationSms(phone_e164, code);
+
+    return res.json({ ok: true, verificationId: ins.rows[0].id, channel });
+  } catch (e) {
+    console.error('register/start error:', e);
+    return sendErr(req, res, 'SERVER');
+  }
+});
+
+// שלב ב': אימות קוד ויצירת המשתמש בפועל
+app.post('/auth/register/verify', authLimiter, async (req, res) => {
+  try {
+    const { verificationId, code } = req.body || {};
+    if (!verificationId || !code) return sendErr(req, res, 'MISSING_FIELDS');
+
+    const q = await pool.query(
+      `SELECT * FROM verifications WHERE id=$1 AND purpose='register'`,
+      [verificationId]
+    );
+    if (!q.rowCount) return res.status(400).json({ ok: false, error: 'Invalid verification id' });
+
+    const v = q.rows[0];
+    if (v.used) return res.status(400).json({ ok: false, error: 'Already used' });
+    if (new Date(v.expires_at) < new Date()) return res.status(400).json({ ok: false, error: 'Code expired' });
+    if (v.attempts >= 5) return res.status(429).json({ ok: false, error: 'Too many attempts' });
+
+    if (String(v.code) !== String(code)) {
+      await pool.query(`UPDATE verifications SET attempts = attempts + 1 WHERE id=$1`, [verificationId]);
+      return res.status(401).json({ ok: false, error: 'Invalid code' });
+    }
+
+    await pool.query(`UPDATE verifications SET used=true WHERE id=$1`, [verificationId]);
+
+    const p = v.payload;
+
+    // בדיקה תחרותית נוספת
+    const em = await pool.query(`SELECT 1 FROM users WHERE email=$1`, [p.email]);
+    if (em.rowCount) return sendErr(req, res, 'EMAIL_TAKEN');
+
+    if (p.phone_e164) {
+      const ph = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1`, [p.phone_e164]);
+      if (ph.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
+    }
+
+    const password_hash = await bcrypt.hash(p.password, 10);
+    const ins = await pool.query(
+      `INSERT INTO users
+        (email, password_hash, first_name, last_name, full_name, phone, phone_e164, country, club,
+         is_coach, is_judge, judge_level, brevet_level, avatar_url, role)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       RETURNING id, email, first_name, last_name, phone, country, club,
+                 is_coach, is_judge, judge_level, brevet_level, avatar_url,
+                 role, is_admin, created_at`,
+      [
+        p.email, password_hash, p.firstName || null, p.lastName || null, p.full_name,
+        p.phone || null, p.phone_e164 || null, p.country || null, p.club || null,
+        !!p.isCoach, !!p.isJudge, p.judgeLevel || null, p.brevetLevel || null,
+        p.avatarUrl || null, p.role
+      ]
+    );
+
+    const u = ins.rows[0];
+    const token = signToken({ uid: u.id });
+    return res.status(201).json({
+      user: {
+        id: u.id, email: u.email,
+        firstName: u.first_name, lastName: u.last_name,
+        phone: u.phone, country: u.country, club: u.club,
+        isCoach: u.is_coach, isJudge: u.is_judge,
+        judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
+        avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin,
+        createdAt: u.created_at
+      },
+      token
+    });
+  } catch (e) {
+    console.error('register/verify error:', e);
+    return sendErr(req, res, 'SERVER');
+  }
+});
+
+/* ---------- Auth: Register (legacy one-step – נשאר לשימוש אדמין/בדיקות) ---------- */
 app.post('/auth/register', authLimiter, async (req, res) => {
   try {
     let {
@@ -310,7 +529,6 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 
     email = normEmail(email);
 
-    // תמיכה ב-fullName
     if ((!firstName || !lastName) && fullName) {
       const p = splitFullName(fullName);
       firstName = firstName || p.first;
@@ -318,21 +536,15 @@ app.post('/auth/register', authLimiter, async (req, res) => {
     }
     const full_name = toFullName(firstName, lastName);
 
-    // ולידציה לוגית + אימייל
     const v = validateRegistration({ email, password, firstName, lastName, country, isCoach, club, isJudge, judgeLevel, brevetLevel });
     if (v) return sendErr(req, res, v.code, { field: v.field });
 
-    // נירמול טלפון ובדיקת ייחודיות
     const phone_e164 = phone ? normalizeToE164(country, phone) : null;
-    if (phone && !phone_e164) {
-      return sendErr(req, res, 'PHONE_INVALID');
-    }
+    if (phone && !phone_e164) return sendErr(req, res, 'PHONE_INVALID');
 
-    // אימייל קיים?
     const emailExists = await pool.query(`SELECT 1 FROM users WHERE email=$1`, [email]);
     if (emailExists.rowCount) return sendErr(req, res, 'EMAIL_TAKEN');
 
-    // טלפון קיים?
     if (phone_e164) {
       const phoneExists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1`, [phone_e164]);
       if (phoneExists.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
@@ -368,15 +580,10 @@ app.post('/auth/register', authLimiter, async (req, res) => {
       token
     });
   } catch (e) {
-    // 23505 = unique_violation
     if (e?.code === '23505') {
       const constraint = e?.constraint || '';
-      if (constraint.includes('users_phone_e164_unique')) {
-        return sendErr(req, res, 'PHONE_TAKEN');
-      }
-      if (constraint.includes('users_email_key')) {
-        return sendErr(req, res, 'EMAIL_TAKEN');
-      }
+      if (constraint.includes('users_phone_e164_unique')) return sendErr(req, res, 'PHONE_TAKEN');
+      if (constraint.includes('users_email_key'))        return sendErr(req, res, 'EMAIL_TAKEN');
       return sendErr(req, res, 'DUPLICATE');
     }
     console.error('Register error:', e);
@@ -463,9 +670,7 @@ app.put('/me', requireAuth, async (req, res) => {
     let phone_e164;
     if (phone !== undefined) {
       phone_e164 = phone ? normalizeToE164(country, phone) : null;
-      if (phone && !phone_e164) {
-        return sendErr(req, res, 'PHONE_INVALID');
-      }
+      if (phone && !phone_e164) return sendErr(req, res, 'PHONE_INVALID');
       if (phone_e164) {
         const exists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2`, [phone_e164, req.user.uid]);
         if (exists.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
@@ -621,9 +826,7 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     let phone_e164;
     if (phone !== undefined) {
       phone_e164 = phone ? normalizeToE164(country, phone) : null;
-      if (phone && !phone_e164) {
-        return sendErr(req, res, 'PHONE_INVALID');
-      }
+      if (phone && !phone_e164) return sendErr(req, res, 'PHONE_INVALID');
       if (phone_e164) {
         const exists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2`, [phone_e164, req.params.id]);
         if (exists.rowCount) return sendErr(req, res, 'PHONE_TAKEN');
