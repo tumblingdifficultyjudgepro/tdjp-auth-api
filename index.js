@@ -8,6 +8,8 @@ import pkg from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+// 🆕 נירמול מספרי טלפון
+import { parsePhoneNumberFromString } from 'libphonenumber-js';
 
 const app = express();
 
@@ -17,7 +19,7 @@ app.use(helmet());
 app.use(cors({ origin: '*', credentials: false }));
 app.use(express.json({ limit: '1mb' }));
 
-const BUILD_TAG = 'auth-api v1.1.1';
+const BUILD_TAG = 'auth-api v1.2.0';
 
 /* ---------- Constants ---------- */
 const ALLOWED_COUNTRIES = ['ישראל', 'בריטניה', 'ארצות הברית', 'רוסיה', 'אוקראינה', 'סין'];
@@ -43,20 +45,42 @@ const signToken = (payload) => jwt.sign(payload, JWT_SECRET, { expiresIn: '30d' 
 app.use(rateLimit({ windowMs: 15 * 60 * 1000, limit: 100, standardHeaders: true, legacyHeaders: false }));
 const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
 
+/* ---------- Phone helpers (🆕) ---------- */
+const COUNTRY_NAME_TO_ISO2 = {
+  'ישראל': 'IL',
+  'בריטניה': 'GB',
+  'ארצות הברית': 'US',
+  'רוסיה': 'RU',
+  'אוקראינה': 'UA',
+  'סין': 'CN',
+};
+function normalizeToE164(countryName, phoneRaw) {
+  if (!phoneRaw) return null;
+  const iso2 = COUNTRY_NAME_TO_ISO2[countryName] || undefined;
+  try {
+    const p = parsePhoneNumberFromString(String(phoneRaw), iso2);
+    if (!p || !p.isValid()) return null;
+    return p.number; // "+9725..."
+  } catch {
+    return null;
+  }
+}
+
 /* ---------- Schema (DDL) ---------- */
 async function ensureSchema() {
   await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
 
-  // Create table (new installs יקבלו כבר first_name/last_name)
   await pool.query(`
     CREATE TABLE IF NOT EXISTS users (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      email        text UNIQUE NOT NULL,
+      email         text UNIQUE NOT NULL,
       password_hash text NOT NULL,
-      first_name    text,                    -- חדש
-      last_name     text,                    -- חדש
-      full_name     text NOT NULL,           -- נשמר לתאימות לאחור
+      first_name    text,
+      last_name     text,
+      full_name     text NOT NULL,
       phone         text,
+      -- 🆕 טלפון מנורמל ל-E.164 לאכיפת ייחודיות
+      phone_e164    text,
       country       text,
       club          text,
       is_coach      boolean NOT NULL DEFAULT false,
@@ -70,9 +94,9 @@ async function ensureSchema() {
     );
   `);
 
-  // אם טבלה ישנה קיימת: להוסיף first_name/last_name ולגבות מתוך full_name
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name text;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name  text;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_e164 text;`);
   await pool.query(`
     UPDATE users
     SET
@@ -87,7 +111,6 @@ async function ensureSchema() {
     WHERE full_name IS NOT NULL;
   `);
 
-  // Reset tokens
   await pool.query(`
     CREATE TABLE IF NOT EXISTS password_resets (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -101,6 +124,12 @@ async function ensureSchema() {
 
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token);`);
+  // 🆕 אינדקס ייחודי מותנה (NULL מותר, כפילויות לא)
+  await pool.query(`
+    CREATE UNIQUE INDEX IF NOT EXISTS users_phone_e164_unique
+      ON users(phone_e164)
+      WHERE phone_e164 IS NOT NULL;
+  `);
 }
 
 /* ---------- Helpers ---------- */
@@ -141,7 +170,7 @@ app.get('/health', async (_req, res) => {
 app.get('/', (_req, res) => {
   res.json({
     ok: true, version: BUILD_TAG,
-    routes: ['/health','/version','/_debug/db','/auth/register','/auth/login','/auth/request-password-reset','/auth/reset-password','/me (GET/PUT)','/admin/users (GET, PUT /:id, DELETE /:id)'],
+    routes: ['/health','/version','/_debug/db','/auth/register','/auth/login','/auth/request-password-reset','/auth/reset-password','/me (GET/PUT)','/admin/users (GET, PUT /:id, PATCH /:id, DELETE /:id)'],
   });
 });
 app.get('/version', (_req, res) => res.json({ version: BUILD_TAG }));
@@ -177,7 +206,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
   try {
     let {
       email, password,
-      firstName, lastName, fullName,     // <-- תומך גם ב-fullName לאחור
+      firstName, lastName, fullName,
       phone, country, club,
       isCoach = false, isJudge = true,
       judgeLevel = null, brevetLevel = null,
@@ -186,7 +215,6 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 
     email = normEmail(email);
 
-    // אם הגיע רק fullName – מפצלים
     if ((!firstName || !lastName) && fullName) {
       const p = splitFullName(fullName);
       firstName = firstName || p.first;
@@ -197,20 +225,31 @@ app.post('/auth/register', authLimiter, async (req, res) => {
     const err = validateRegistration({ email, password, firstName, lastName, country, isCoach, club, isJudge, judgeLevel, brevetLevel });
     if (err) return res.status(400).json({ error: err });
 
-    const exists = await pool.query(`SELECT 1 FROM users WHERE email=$1`, [email]);
-    if (exists.rowCount) return res.status(409).json({ error: 'Email already registered' });
+    // 🆕 נירמול טלפון ובדיקת ייחודיות
+    const phone_e164 = phone ? normalizeToE164(country, phone) : null;
+    if (phone && !phone_e164) {
+      return res.status(400).json({ error: 'Invalid phone number', code: 'PHONE_INVALID' });
+    }
+
+    const emailExists = await pool.query(`SELECT 1 FROM users WHERE email=$1`, [email]);
+    if (emailExists.rowCount) return res.status(409).json({ error: 'Email already registered' });
+
+    if (phone_e164) {
+      const phoneExists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1`, [phone_e164]);
+      if (phoneExists.rowCount) return res.status(409).json({ error: 'Phone already registered', code: 'PHONE_TAKEN' });
+    }
 
     const password_hash = await bcrypt.hash(password, 10);
     const ins = await pool.query(
       `INSERT INTO users
-        (email, password_hash, first_name, last_name, full_name, phone, country, club,
+        (email, password_hash, first_name, last_name, full_name, phone, phone_e164, country, club,
          is_coach, is_judge, judge_level, brevet_level, avatar_url, role)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING id, email, first_name, last_name, phone, country, club,
                  is_coach, is_judge, judge_level, brevet_level, avatar_url,
                  role, is_admin, created_at`,
       [email, password_hash, firstName || null, lastName || null, full_name,
-       phone || null, country || null, club || null,
+       phone || null, phone_e164, country || null, club || null,
        !!isCoach, !!isJudge, judgeLevel || null, brevetLevel ? String(brevetLevel) : null,
        avatarUrl || null, (isJudge ? 'judge' : (isCoach ? 'coach' : 'user'))]
     );
@@ -230,7 +269,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
       token
     });
   } catch (e) {
-    if (e?.code === '23505') return res.status(409).json({ error: 'Email already registered' });
+    if (e?.code === '23505') return res.status(409).json({ error: 'Email or phone already registered' });
     console.error('Register error:', e);
     return res.status(500).json({ error: e.message || 'Server error' });
   }
@@ -294,66 +333,85 @@ app.get('/me', requireAuth, async (req, res) => {
 });
 
 app.put('/me', requireAuth, async (req, res) => {
-  const {
-    firstName, lastName, // חדש
-    phone, country, club, isCoach, isJudge, judgeLevel, brevetLevel, avatarUrl
-  } = req.body || {};
+  try {
+    const {
+      firstName, lastName,
+      phone, country, club, isCoach, isJudge, judgeLevel, brevetLevel, avatarUrl
+    } = req.body || {};
 
-  if (country && !ALLOWED_COUNTRIES.includes(country)) return res.status(400).json({ error: 'Invalid country' });
-  if (typeof isCoach === 'boolean' && isCoach) {
-    if (club && !ALLOWED_CLUBS.includes(club)) return res.status(400).json({ error: 'Club must be from list' });
-  }
-  if (typeof isJudge === 'boolean' && isJudge) {
-    if (judgeLevel && !JUDGE_LEVELS.includes(judgeLevel)) return res.status(400).json({ error: 'Invalid judge level' });
-    if (judgeLevel === 'בינלאומי') {
-      if (!BREVET_LEVELS.includes(String(brevetLevel))) return res.status(400).json({ error: 'Brevet level required (1/2/3/4)' });
+    if (country && !ALLOWED_COUNTRIES.includes(country)) return res.status(400).json({ error: 'Invalid country' });
+    if (typeof isCoach === 'boolean' && isCoach) {
+      if (club && !ALLOWED_CLUBS.includes(club)) return res.status(400).json({ error: 'Club must be from list' });
     }
-  }
-
-  // נעדכן גם full_name כדי לשמור תאימות
-  const full_name = (firstName || lastName) ? toFullName(firstName, lastName) : null;
-
-  const q = await pool.query(
-    `UPDATE users SET
-        first_name   = COALESCE($2, first_name),
-        last_name    = COALESCE($3, last_name),
-        full_name    = COALESCE($4, full_name),
-        phone        = COALESCE($5, phone),
-        country      = COALESCE($6, country),
-        club         = COALESCE($7, club),
-        is_coach     = COALESCE($8, is_coach),
-        is_judge     = COALESCE($9, is_judge),
-        judge_level  = COALESCE($10, judge_level),
-        brevet_level = COALESCE($11, brevet_level),
-        avatar_url   = COALESCE($12, avatar_url)
-     WHERE id=$1
-     RETURNING id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
-               judge_level, brevet_level, avatar_url, role, is_admin, created_at`,
-    [req.user.uid,
-     firstName ?? null,
-     lastName ?? null,
-     full_name,
-     phone ?? null,
-     country ?? null,
-     club ?? null,
-     typeof isCoach === 'boolean' ? isCoach : null,
-     typeof isJudge === 'boolean' ? isJudge : null,
-     judgeLevel ?? null,
-     brevetLevel ? String(brevetLevel) : null,
-     avatarUrl ?? null
-    ]
-  );
-  const u = q.rows[0];
-  res.json({
-    user: {
-      id: u.id, email: u.email,
-      firstName: u.first_name, lastName: u.last_name,
-      phone: u.phone, country: u.country, club: u.club,
-      isCoach: u.is_coach, isJudge: u.is_judge,
-      judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
-      avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin, createdAt: u.created_at
+    if (typeof isJudge === 'boolean' && isJudge) {
+      if (judgeLevel && !JUDGE_LEVELS.includes(judgeLevel)) return res.status(400).json({ error: 'Invalid judge level' });
+      if (judgeLevel === 'בינלאומי') {
+        if (!BREVET_LEVELS.includes(String(brevetLevel))) return res.status(400).json({ error: 'Brevet level required (1/2/3/4)' });
+      }
     }
-  });
+
+    // 🆕 נירמול טלפון ובדיקת ייחודיות (כשנשלח phone)
+    let phone_e164;
+    if (phone !== undefined) {
+      phone_e164 = phone ? normalizeToE164(country, phone) : null;
+      if (phone && !phone_e164) {
+        return res.status(400).json({ error: 'Invalid phone number', code: 'PHONE_INVALID' });
+      }
+      if (phone_e164) {
+        const exists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2`, [phone_e164, req.user.uid]);
+        if (exists.rowCount) return res.status(409).json({ error: 'Phone already registered', code: 'PHONE_TAKEN' });
+      }
+    }
+
+    const full_name = (firstName || lastName) ? toFullName(firstName, lastName) : null;
+
+    const q = await pool.query(
+      `UPDATE users SET
+          first_name   = COALESCE($2, first_name),
+          last_name    = COALESCE($3, last_name),
+          full_name    = COALESCE($4, full_name),
+          phone        = COALESCE($5, phone),
+          phone_e164   = COALESCE($6, phone_e164),
+          country      = COALESCE($7, country),
+          club         = COALESCE($8, club),
+          is_coach     = COALESCE($9, is_coach),
+          is_judge     = COALESCE($10, is_judge),
+          judge_level  = COALESCE($11, judge_level),
+          brevet_level = COALESCE($12, brevet_level),
+          avatar_url   = COALESCE($13, avatar_url)
+       WHERE id=$1
+       RETURNING id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
+                 judge_level, brevet_level, avatar_url, role, is_admin, created_at`,
+      [req.user.uid,
+       firstName ?? null,
+       lastName ?? null,
+       full_name,
+       phone ?? null,
+       phone_e164 ?? null,
+       country ?? null,
+       club ?? null,
+       typeof isCoach === 'boolean' ? isCoach : null,
+       typeof isJudge === 'boolean' ? isJudge : null,
+       judgeLevel ?? null,
+       brevetLevel ? String(brevetLevel) : null,
+       avatarUrl ?? null
+      ]
+    );
+    const u = q.rows[0];
+    res.json({
+      user: {
+        id: u.id, email: u.email,
+        firstName: u.first_name, lastName: u.last_name,
+        phone: u.phone, country: u.country, club: u.club,
+        isCoach: u.is_coach, isJudge: u.is_judge,
+        judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
+        avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin, createdAt: u.created_at
+      }
+    });
+  } catch (e) {
+    console.error('PUT /me error:', e);
+    return res.status(500).json({ error: e.message || 'Server error' });
+  }
 });
 
 /* ---------- Password reset ---------- */
@@ -419,7 +477,6 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const b = req.body || {};
 
-    // קבלת ערכים גם ב-snake_case וגם ב-camelCase
     const first_name   = b.first_name   ?? b.firstName;
     const last_name    = b.last_name    ?? b.lastName;
     const email        = b.email ? normEmail(b.email) : undefined;
@@ -432,7 +489,6 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     const brevet_level = b.brevet_level ?? (b.brevetLevel != null ? String(b.brevetLevel) : undefined);
     const avatar_url   = b.avatar_url   ?? b.avatarUrl;
 
-    // ולידציות בסיסיות (תואם למה שיש אצלך ב-/me)
     if (country !== undefined && country !== null && !ALLOWED_COUNTRIES.includes(country)) {
       return res.status(400).json({ error: 'Invalid country' });
     }
@@ -452,11 +508,23 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
       }
     }
 
-    // בונים SET דינמי רק לשדות שהגיעו
+    // 🆕 נירמול טלפון ובדיקת ייחודיות (כשנשלח phone)
+    let phone_e164;
+    if (phone !== undefined) {
+      phone_e164 = phone ? normalizeToE164(country, phone) : null;
+      if (phone && !phone_e164) {
+        return res.status(400).json({ error: 'Invalid phone number', code: 'PHONE_INVALID' });
+      }
+      if (phone_e164) {
+        const exists = await pool.query(`SELECT 1 FROM users WHERE phone_e164=$1 AND id<>$2`, [phone_e164, req.params.id]);
+        if (exists.rowCount) return res.status(409).json({ error: 'Phone already registered', code: 'PHONE_TAKEN' });
+      }
+    }
+
     const sets = [];
     const vals = [];
     const add = (col, val) => {
-      if (val !== undefined) {            // undefined = לא נשלח; null = נשלח ורוצים לאפס
+      if (val !== undefined) {
         sets.push(`${col} = $${sets.length + 1}`);
         vals.push(val);
       }
@@ -465,6 +533,7 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     add('first_name',   first_name ?? null);
     add('last_name',    last_name ?? null);
     add('phone',        phone ?? null);
+    add('phone_e164',   phone_e164 ?? null); // 🆕
     add('country',      country ?? null);
     add('club',         club ?? null);
     add('is_coach',     (typeof is_coach === 'boolean') ? is_coach : null);
@@ -474,7 +543,6 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     add('avatar_url',   avatar_url ?? null);
     add('email',        email ?? null);
 
-    // נעדכן גם full_name אם ניתן
     if (first_name !== undefined || last_name !== undefined) {
       const full_name = toFullName(first_name ?? null, last_name ?? null);
       add('full_name', full_name || null);
@@ -482,7 +550,6 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
 
     if (!sets.length) return res.status(400).json({ error: 'No fields to update' });
 
-    // ה-ID תמיד אחרון
     vals.push(req.params.id);
 
     const q = await pool.query(
