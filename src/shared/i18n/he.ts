@@ -19,24 +19,38 @@ const he = {
   quiz: {
     settings: {
       title: 'בחן את עצמך !',
-      mode: 'מצב',
-      mode_custom: 'התאמה אישית',
-      mode_random: 'אקראי',
-      section_forms: 'סוג השאלות',
-      form_mcq: 'אמריקאיות',
-      form_open: 'פתוחות',
-      section_prompt: 'תצוגת השאלה',
-      prompt_symbol: 'סימבול',
-      prompt_name: 'שם אלמנט',
-      section_mapping: 'כיווניות',
-      map_v_to_e: 'ערך → אלמנט',
-      map_e_to_v: 'אלמנט → ערך',
-      section_count: 'מספר שאלות',
-      start: 'התחל מבחן',
-      select_options: 'נא לבחור אופציות',
-      ready: 'מוכן'
+      back: 'חזרה',
+      next: 'הבא',
+      start: 'התחלת מבחן',
+      modeTitle: 'מצב מבחן',
+      modeCustom: 'התאמה אישית',
+      modeRandom: 'אקראי',
+      formTitle: 'סוג השאלות',
+      formMcq: 'רב ברירה',
+      formOpen: 'פתוחה',
+      promptTitle: 'תצוגת השאלה',
+      promptSymbol: 'סימבול',
+      promptElementName: 'שם האלמנט',
+      mappingTitle: 'כיווניות',
+      mappingElementName: 'שם האלמנט',
+      mappingElementValue: 'ערך האלמנט',
+      countTitle: 'מספר שאלות',
+      timerTitle: 'טיימר לשאלה',
+      timer10: '10 שנ׳',
+      timer20: '20 שנ׳',
+      timer30: '30 שנ׳',
+      timer60: '60 שנ׳',
+      timerUnlimited: 'ללא טיימר'
     }
+  },
+
+  calculator: {
+    total: 'סה״כ דרגת קושי:',
+    delete: 'מחק',
+    clear: 'נקה',
+    sort: { difficulty: 'דרגת קושי', direction: 'כיוון', usage: 'שימוש' },
   }
+
 } as const;
 
 export default he;

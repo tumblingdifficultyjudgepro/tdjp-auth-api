@@ -1,30 +1,25 @@
-import React, { ReactNode } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { Colors } from '@/shared/theme/theme';
 
 type Props = {
   title: string;
+  colors: Colors;
   isRTL: boolean;
-  colors: { bg: string; text: string; card: string; tint: string; border: string };
-  children: ReactNode;
-  variant?: 'card' | 'plain';
+  children: React.ReactNode;
 };
 
-export default function SettingsSection({ title, isRTL, colors, children, variant = 'plain' }: Props) {
-  const wrapStyle =
-    variant === 'card'
-      ? [styles.card, { backgroundColor: colors.card, borderColor: colors.border }]
-      : [styles.plain];
+export default function SettingsSection({ title, colors, isRTL, children }: Props) {
   return (
-    <View style={wrapStyle}>
-      <Text style={[styles.sectionTitle, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>{title}</Text>
-      <View style={[styles.row, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>{children}</View>
+    <View style={styles.wrap}>
+      <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+      <View style={styles.body}>{children}</View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { borderWidth: 1, borderRadius: 16, padding: 14, gap: 12 },
-  plain: { paddingVertical: 6, gap: 10 },
-  sectionTitle: { fontSize: 16, fontWeight: '800' },
-  row: { gap: 10, flexWrap: 'wrap', alignItems: 'center' }
+  wrap: { marginTop: 70, marginBottom: 26, alignItems: 'center' },
+  title: { fontSize: 30, fontWeight: '900', textAlign: 'center', marginBottom: 100, letterSpacing: 0.2 },
+  body: { alignItems: 'center', justifyContent: 'center' },
 });

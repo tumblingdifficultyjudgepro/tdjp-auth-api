@@ -27,7 +27,8 @@ function CardItem({
   const progress = useRef(new Animated.Value(0)).current;
   const [flipped, setFlipped] = useState(false);
   const [highlight, setHighlight] = useState<'none' | 'green' | 'red'>('none');
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  type TimeoutHandle = ReturnType<typeof setTimeout>;
+  const timerRef = useRef<TimeoutHandle | null>(null);
   const frontRotate = progress.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '180deg'] });
   const backRotate = progress.interpolate({ inputRange: [0, 1], outputRange: ['180deg', '360deg'] });
   const frontOpacity = progress.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 0, 0] });
@@ -137,7 +138,7 @@ export default function FlashcardsScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <TopBar
-        titleKey=""
+        titleKey="tabs.flash" 
         showElementToggle
         elementMode={elementMode}
         onToggleElementMode={() => setElementMode(prev => (prev === 'text' ? 'symbol' : 'text'))}

@@ -9,34 +9,55 @@ import SettingsSheet from './SettingsSheet';
 
 type ModeToggle = 'text' | 'symbol';
 
-const toggleLetter = (colors: any) => ({
-  color: colors.text,
-  fontSize: 18,
+type Props = {
+  titleKey: string;
+  showBack?: boolean;
+  onBack?: () => void;
+  showElementToggle?: boolean;
+  elementMode?: ModeToggle;
+  onToggleElementMode?: () => void;
+};
+
+const letterStyle = (color: string) => ({
+  color,
+  fontSize: 20,
   fontWeight: '900' as const,
   transform: [{ translateY: -1 }],
-  fontFamily: Platform.select({ ios: 'System', android: 'sans-serif-medium' })
+  fontFamily: Platform.select({ ios: 'Times New Roman', android: 'serif', default: 'Times New Roman' }),
 });
 
 export default function TopBar({
   titleKey,
+  showBack,
+  onBack,
   showElementToggle,
   elementMode,
-  onToggleElementMode
-}: {
-  titleKey: string;
-  showElementToggle?: boolean;
-  elementMode?: ModeToggle;
-  onToggleElementMode?: () => void;
-}) {
+  onToggleElementMode,
+}: Props) {
   const { colors } = useAppTheme();
   const { lang } = useLang();
   const isRTL = lang === 'he';
   const [open, setOpen] = useState(false);
 
+  const BackBtn = showBack ? (
+    <Pressable
+      onPress={onBack}
+      style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.border }]}
+      hitSlop={12}
+      accessibilityLabel={t(lang, 'quiz.settings.back')}
+    >
+      <Ionicons name="chevron-back" size={20} color={colors.text} />
+    </Pressable>
+  ) : (
+    <View style={styles.placeholder} />
+  );
+
   const SettingsBtn = (
     <Pressable
       onPress={() => setOpen(true)}
       style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.border }]}
+      hitSlop={12}
+      accessibilityLabel="Settings"
     >
       <Ionicons name="settings-sharp" size={18} color={colors.text} />
     </Pressable>
@@ -46,37 +67,35 @@ export default function TopBar({
     <Pressable
       onPress={onToggleElementMode}
       style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.border }]}
+      hitSlop={12}
+      accessibilityLabel={elementMode === 'symbol' ? 'Switch to Text' : 'Switch to Symbols'}
     >
-      {elementMode === 'symbol' ? (
-        <Text style={toggleLetter(colors)}>𝐓</Text>
-      ) : (
-        <Text style={toggleLetter(colors)}>𝐒</Text>
-      )}
+      <Text style={letterStyle(colors.text)}>{elementMode === 'symbol' ? 'T' : 'S'}</Text>
     </Pressable>
   ) : (
-    <View style={styles.sidePlaceholder} />
+    <View style={styles.placeholder} />
   );
+
+  const leftSlotNoBack = isRTL ? ToggleBtn : SettingsBtn;
+  const rightSlotNoBack = isRTL ? SettingsBtn : ToggleBtn;
+  const leftSlotWithBack = isRTL ? BackBtn : SettingsBtn;
+  const rightSlotWithBack = isRTL ? SettingsBtn : BackBtn;
 
   return (
     <>
       <SafeAreaView edges={['top']} style={{ backgroundColor: colors.bg }}>
-        <View style={[styles.barWrap, { backgroundColor: colors.bg }]}>
-          <View style={styles.bar}>
-            {isRTL ? ToggleBtn : SettingsBtn}
+        <View style={[styles.wrap, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
+          <View style={styles.sideLeft}>
+            {showBack ? leftSlotWithBack : leftSlotNoBack}
+          </View>
+          <View style={styles.center}>
             <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
               {titleKey ? t(lang, titleKey) : ''}
             </Text>
-            {isRTL ? SettingsBtn : ToggleBtn}
           </View>
-          <View
-            style={{
-              height: StyleSheet.hairlineWidth,
-              backgroundColor: Platform.select({
-                ios: 'rgba(0,0,0,0.08)',
-                android: 'rgba(0,0,0,0.12)'
-              })
-            }}
-          />
+          <View style={styles.sideRight}>
+            {showBack ? rightSlotWithBack : rightSlotNoBack}
+          </View>
         </View>
       </SafeAreaView>
       <SettingsSheet visible={open} onClose={() => setOpen(false)} />
@@ -84,29 +103,43 @@ export default function TopBar({
   );
 }
 
+const EDGE = 8;
+const BTN = 36;
+
 const styles = StyleSheet.create({
-  barWrap: {},
-  bar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    paddingBottom: 10
+  wrap: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    height: 56,
+    justifyContent: 'center',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '800',
-    textAlign: 'center',
-    flexShrink: 1
+  sideLeft: {
+    position: 'absolute',
+    left: EDGE,
+    top: 10,
+    height: BTN,
+    justifyContent: 'center',
   },
+  sideRight: {
+    position: 'absolute',
+    right: EDGE,
+    top: 10,
+    height: BTN,
+    justifyContent: 'center',
+  },
+  center: {
+    alignSelf: 'center',
+    justifyContent: 'center',
+    maxWidth: '70%',
+  },
+  title: { fontSize: 26, fontWeight: '900', textAlign: 'center' },
   btn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: BTN,
+    height: BTN,
+    borderRadius: BTN / 2,
     borderWidth: 1.5,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
   },
-  sidePlaceholder: { width: 36, height: 36, borderRadius: 18 }
+  placeholder: { width: BTN, height: BTN, borderRadius: BTN / 2 },
 });
+   

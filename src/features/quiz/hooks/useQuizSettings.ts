@@ -1,37 +1,36 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Mode, QuestionForm, PromptKind, Mapping, QuizConfig, TimerPreset } from '../types';
 
 export function useQuizSettings() {
-  const [mode, setMode] = useState<Mode>('custom');
-  const [form, setForm] = useState<QuestionForm>('mcq');
-  const [prompt, setPrompt] = useState<PromptKind>('symbol');
+  const [mode, setMode] = useState<Mode | null>(null);
+  const [form, setForm] = useState<QuestionForm | null>(null);
+  const [prompt, setPrompt] = useState<PromptKind | null>(null);
   const [mapping, setMapping] = useState<Mapping>('valueToElement');
-  const [count, setCount] = useState<number>(10);
-  const [timer, setTimer] = useState<TimerPreset>(20);
+  const [count, setCount] = useState<number>(5);
+  const [timer, setTimer] = useState<TimerPreset>(10);
 
-  function buildConfig(): QuizConfig {
-    if (mode === 'random') return { mode, count, timer };
-    return { mode, form, prompt, mapping, count, timer };
-  }
+  const buildConfig = useCallback((): QuizConfig | null => {
+    if (mode === 'random') return { mode, count, timer } as QuizConfig;
+    if (mode === 'custom' && form && prompt && mapping) return { mode, form, prompt, mapping, count, timer };
+    return null;
+  }, [mode, form, prompt, mapping, count, timer]);
 
-  function isValidCustom() {
-    return Boolean(form && prompt && mapping);
-  }
+  const isValidCustom = useCallback(() => Boolean(form && prompt && mapping), [form, prompt, mapping]);
 
   return {
     mode,
-    setMode,
+    setMode: (v: Mode) => setMode(v),
     form,
-    setForm,
+    setForm: (v: QuestionForm) => setForm(v),
     prompt,
-    setPrompt,
+    setPrompt: (v: PromptKind) => setPrompt(v),
     mapping,
-    setMapping,
+    setMapping: (v: Mapping) => setMapping(v),
     count,
-    setCount,
+    setCount: (n: number) => setCount(n),
     timer,
-    setTimer,
+    setTimer: (v: TimerPreset) => setTimer(v),
     buildConfig,
-    isValidCustom
+    isValidCustom,
   };
 }

@@ -18,24 +18,37 @@ const en = {
   },
   quiz: {
     settings: {
-      title: 'Test Yourself!',
-      mode: 'Mode',
-      mode_custom: 'Custom',
-      mode_random: 'Random',
-      section_forms: 'Question Types',
-      form_mcq: 'Multiple Choice',
-      form_open: 'Open',
-      section_prompt: 'Prompt',
-      prompt_symbol: 'Symbol',
-      prompt_name: 'Element Name',
-      section_mapping: 'Mapping',
-      map_v_to_e: 'Value → Element',
-      map_e_to_v: 'Element → Value',
-      section_count: 'Number of Questions',
+      title: 'Test Yourself !',
+      back: 'Back',
+      next: 'Next',
       start: 'Start Quiz',
-      select_options: 'Please select options',
-      ready: 'Ready'
+      modeTitle: 'Mode',
+      modeCustom: 'Custom',
+      modeRandom: 'Random',
+      formTitle: 'Question Type',
+      formMcq: 'Multiple Choice',
+      formOpen: 'Open',
+      promptTitle: 'Question Display',
+      promptSymbol: 'Symbol',
+      promptElementName: 'Element Name',
+      mappingTitle: 'Mapping',
+      mappingElementName: 'Element Name',
+      mappingElementValue: 'Element Value',
+      countTitle: 'Number of Questions',
+      timerTitle: 'Timer per Question',
+      timer10: '10s',
+      timer20: '20s',
+      timer30: '30s',
+      timer60: '60s',
+      timerUnlimited: 'No timer'
     }
+  },
+
+  calculator: {
+    total: 'Total Difficulty:',
+    delete: 'Delete',
+    clear: 'Clear',
+    sort: { difficulty: 'Difficulty', direction: 'Direction', usage: 'Usage' },
   }
 } as const;
 

@@ -1,20 +1,21 @@
 import React from 'react';
-import { createBottomTabNavigator, BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
-import { View, Pressable, StyleSheet } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { Lang } from '@/shared/i18n';
-import { t } from '@/shared/i18n';
 import { useAppTheme } from '@/shared/theme/theme';
+import { useLang } from '@/shared/state/lang';
+import { t } from '@/shared/i18n';
+
 import HomeScreen from '@/features/home';
 import CalculatorScreen from '@/features/calculator';
-import QuizScreen from '@/features/quiz';
 import FlashcardsScreen from '@/features/flashcards';
 import TariffScreen from '@/features/tariff';
+import QuizStack from '@/app/navigation/QuizStack';
 
 const Tab = createBottomTabNavigator();
 
-function CenterTabBarButton(props: BottomTabBarButtonProps) {
+function CenterTabBarButton(props: any) {
   return (
     <Pressable
       onPress={props.onPress}
@@ -32,7 +33,7 @@ function CenterTabBarButton(props: BottomTabBarButtonProps) {
   );
 }
 
-function RegularTabBarButton(props: BottomTabBarButtonProps) {
+function RegularTabBarButton(props: any) {
   return (
     <Pressable
       onPress={props.onPress}
@@ -49,39 +50,47 @@ function RegularTabBarButton(props: BottomTabBarButtonProps) {
 export default function Tabs() {
   const { colors } = useAppTheme();
   const insets = useSafeAreaInsets();
-  const lang: Lang = 'he';
+  const { lang } = useLang();
   const isRTL = lang === 'he';
 
   const screensRTL = [
     { name: 'Tariff', component: TariffScreen, icon: 'document-text-outline' as const, label: t(lang, 'tabs.tariff') },
     { name: 'Calculator', component: CalculatorScreen, icon: 'calculator-outline' as const, label: t(lang, 'tabs.calc') },
     { name: 'Home', component: HomeScreen, icon: 'home-outline' as const, label: '' },
-    { name: 'Quiz', component: QuizScreen, icon: 'help-circle-outline' as const, label: t(lang, 'tabs.quiz') },
+    { name: 'Quiz', component: QuizStack, icon: 'help-circle-outline' as const, label: t(lang, 'tabs.quiz') },
     { name: 'Flashcards', component: FlashcardsScreen, icon: 'albums-outline' as const, label: t(lang, 'tabs.flash') }
   ];
 
   const screensLTR = [
     { name: 'Flashcards', component: FlashcardsScreen, icon: 'albums-outline' as const, label: t(lang, 'tabs.flash') },
-    { name: 'Quiz', component: QuizScreen, icon: 'help-circle-outline' as const, label: t(lang, 'tabs.quiz') },
+    { name: 'Quiz', component: QuizStack, icon: 'help-circle-outline' as const, label: t(lang, 'tabs.quiz') },
     { name: 'Home', component: HomeScreen, icon: 'home-outline' as const, label: '' },
     { name: 'Calculator', component: CalculatorScreen, icon: 'calculator-outline' as const, label: t(lang, 'tabs.calc') },
     { name: 'Tariff', component: TariffScreen, icon: 'document-text-outline' as const, label: t(lang, 'tabs.tariff') }
   ];
 
-  const screens = isRTL ? screensRTL : screensLTR;
-  const insetBottom = Math.max(10, insets.bottom);
+  const SCREENS = isRTL ? screensRTL : screensLTR;
   const barHeight = 62 + insets.bottom;
+  const insetBottom = Math.max(10, insets.bottom);
 
   return (
     <Tab.Navigator
+      key={`tabs-${lang}-${isRTL ? 'rtl' : 'ltr'}`}   // רימאונט של הטאבים בשינוי שפה
+      detachInactiveScreens={false}                   // אל תנתק פרגמנטים – מפחית את “No view found…”
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.tint,
         tabBarInactiveTintColor: '#8e8e93',
         tabBarItemStyle: { top: -2 },
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: 'transparent', height: barHeight, paddingBottom: insetBottom, paddingTop: 8 },
+        tabBarStyle: {
+          backgroundColor: colors.card,
+          borderTopColor: 'transparent',
+          height: barHeight,
+          paddingBottom: insetBottom,
+          paddingTop: 8
+        },
         tabBarIcon: ({ size, color }) => {
-          const s = screens.find(x => x.name === route.name);
+          const s = SCREENS.find(x => x.name === route.name);
           const icon = s?.icon ?? 'ellipse-outline';
           const wrapStyle = route.name === 'Home' ? styles.homeIconWrap : undefined;
           const iconColor = route.name === 'Home' ? colors.bg : color;
@@ -92,12 +101,17 @@ export default function Tabs() {
             </View>
           );
         },
-        tabBarLabel: screens.find(x => x.name === route.name)?.label,
-        tabBarButton: props => (route.name === 'Home' ? <CenterTabBarButton {...props} /> : <RegularTabBarButton {...props} />)
+        tabBarLabel: SCREENS.find(x => x.name === route.name)?.label,
+        tabBarButton: (props) =>
+          route.name === 'Home' ? <CenterTabBarButton {...props} /> : <RegularTabBarButton {...props} />
       })}
     >
-      {screens.map(s => (
-        <Tab.Screen key={s.name} name={s.name as any} component={s.component} />
+      {SCREENS.map(s => (
+        <Tab.Screen
+          key={`${s.name}-${lang}`}   // מסייע לרימאונט נקי
+          name={s.name as any}
+          component={s.component}
+        />
       ))}
     </Tab.Navigator>
   );

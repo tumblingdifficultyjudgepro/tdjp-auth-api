@@ -1,9 +1,8 @@
 import React, { createContext, useContext, useMemo, useState } from 'react';
-import { Appearance } from 'react-native';
 
 export type Mode = 'light' | 'blue' | 'dark';
 
-type Colors = {
+export type Colors = {
   bg: string;
   text: string;
   card: string;
