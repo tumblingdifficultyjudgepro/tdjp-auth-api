@@ -5,7 +5,7 @@ export function useQuizSettings() {
   const [mode, setMode] = useState<Mode | null>(null);
   const [form, setForm] = useState<QuestionForm | null>(null);
   const [prompt, setPrompt] = useState<PromptKind | null>(null);
-  const [mapping, setMapping] = useState<Mapping>('valueToElement');
+  const [mapping, setMapping] = useState<Mapping>('elementToValue');
   const [count, setCount] = useState<number>(5);
   const [timer, setTimer] = useState<TimerPreset>(10);
 

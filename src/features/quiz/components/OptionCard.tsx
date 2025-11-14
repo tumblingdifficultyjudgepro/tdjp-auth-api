@@ -24,7 +24,7 @@ export default function OptionCard({ selected, label, colors, onPress, icon, let
           backgroundColor: selected ? colors.tint : colors.card,
           width: width ?? 160,
         },
-        pressed && { opacity: 0.9 },
+        pressed ? { opacity: 0.9 } : undefined,
       ]}
       accessibilityRole="button"
     >

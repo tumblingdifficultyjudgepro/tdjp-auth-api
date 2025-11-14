@@ -33,6 +33,10 @@ export default function QuizSettingsWizard() {
 
   const [step, setStep] = useState<StepId>('mode');
 
+  useEffect(() => {
+    if (mapping == null) setMapping('elementToValue' as Mapping);
+  }, []);
+
   const flow: StepId[] = useMemo(() => {
     if (mode === 'custom') return ['mode', 'form', 'prompt', 'mapping', 'count_timer'];
     if (mode === 'random') return ['mode', 'count_timer'];

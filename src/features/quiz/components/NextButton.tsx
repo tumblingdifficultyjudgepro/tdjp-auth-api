@@ -10,10 +10,7 @@ export default function NextButton({ enabled, onPress, labelKey = 'quiz.actions.
   const { colors } = useAppTheme()
   const { lang } = useLang()
   return (
-    <Pressable onPress={onPress} disabled={!enabled} style={({ pressed }) => [
-      styles.btn,
-      { backgroundColor: enabled ? colors.tint : colors.border, opacity: pressed ? 0.9 : 1 },
-    ]}>
+    <Pressable onPress={onPress} disabled={!enabled} style={({ pressed }) => [styles.btn, { backgroundColor: enabled ? colors.tint : colors.border, opacity: pressed ? 0.9 : 1 }]}>
       <Text style={[styles.txt, { color: colors.bg }]}>{t(lang, labelKey)}</Text>
     </Pressable>
   )

@@ -33,6 +33,9 @@ export type QuizQuestion = {
   elementId?: string
   targetValue?: number
   timeLimitSec: number
+  symbol?: string        // חדש
+  name?: string          // חדש
+  value?: string         // חדש (לטקסט תצוגה)
 }
 
 export type QuestionResult = {

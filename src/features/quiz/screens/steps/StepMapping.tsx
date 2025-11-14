@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { View, StyleSheet, Text, Pressable } from 'react-native';
 import { Mapping } from '@/features/quiz/types';
 import { useAppTheme } from '@/shared/theme/theme';
@@ -12,14 +12,11 @@ export default function StepMapping({ value, onChange }: Props) {
   const { colors } = useAppTheme();
   const { lang } = useLang();
 
-  const current: Mapping = value ?? 'valueToElement';
-  const isV2E = current === 'valueToElement';
-  const nextValue: Mapping = useMemo(() => (isV2E ? 'elementToValue' : 'valueToElement'), [isV2E]);
+  const effective: Mapping = value ?? 'elementToValue';
+  const isDown = effective === 'elementToValue';
+  const next: Mapping = isDown ? 'valueToElement' : 'elementToValue';
 
-  const onPress = () => {
-    if (value == null) onChange('valueToElement');
-    else onChange(nextValue);
-  };
+  const onPress = () => onChange(next);
 
   return (
     <View style={[styles.wrap, { backgroundColor: colors.bg }]}>
@@ -27,9 +24,11 @@ export default function StepMapping({ value, onChange }: Props) {
         <View style={[styles.box, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <Text style={[styles.boxTitle, { color: colors.text }]}>{t(lang, 'quiz.settings.mappingElementName')}</Text>
         </View>
+
         <Pressable onPress={onPress} style={[styles.arrowWrap, { borderColor: colors.border }]} hitSlop={12}>
-          <Ionicons name={isV2E ? 'arrow-down' : 'arrow-up'} size={34} color={colors.tint} />
+          <Ionicons name={isDown ? 'arrow-down' : 'arrow-up'} size={34} color={colors.tint} />
         </Pressable>
+
         <View style={[styles.box, { borderColor: colors.border, backgroundColor: colors.card }]}>
           <Text style={[styles.boxTitle, { color: colors.text }]}>{t(lang, 'quiz.settings.mappingElementValue')}</Text>
         </View>
@@ -43,5 +42,5 @@ const styles = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center' },
   box: { width: 260, height: 110, borderRadius: 18, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginVertical: 16 },
   boxTitle: { fontSize: 26, fontWeight: '800', textAlign: 'center' },
-  arrowWrap: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginVertical: 14 }
+  arrowWrap: { width: 80, height: 80, borderRadius: 40, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginVertical: 14 },
 });

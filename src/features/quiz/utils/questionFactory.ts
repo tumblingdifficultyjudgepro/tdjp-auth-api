@@ -21,9 +21,7 @@ export function buildQuestions(elements: ElementItem[], config: QuizConfig, lang
 
   const fill = (key: string, params: Record<string, string | number>) => {
     let s = t(lang, key) as string
-    for (const [k, v] of Object.entries(params)) {
-      s = s.replace(new RegExp(`{{${k}}}`, 'g'), String(v))
-    }
+    for (const [k, v] of Object.entries(params)) s = s.replace(new RegExp(`{{${k}}}`, 'g'), String(v))
     return s
   }
 
@@ -33,18 +31,12 @@ export function buildQuestions(elements: ElementItem[], config: QuizConfig, lang
   }
 
   const resolveTemplateFromCustom = (cfg: QuizConfig): QuestionTemplateType => {
-    if (cfg.mapping === 'elementToValue') {
-      if (cfg.prompt === 'name') return 'nameToValue'
-      return 'symbolToValue'
-    }
-    if (cfg.mapping === 'valueToElement') {
-      if (cfg.prompt === 'name') return 'valueToName'
-      return 'valueToSymbol'
-    }
+    if (cfg.mapping === 'elementToValue') return cfg.prompt === 'name' ? 'nameToValue' : 'symbolToValue'
+    if (cfg.mapping === 'valueToElement') return cfg.prompt === 'name' ? 'valueToName' : 'valueToSymbol'
     return 'nameToValue'
   }
 
-  const shouldOpen = (template: QuestionTemplateType) => {
+  const shouldOpen = () => {
     if (config.mode === 'custom') return config.form === 'open'
     if (config.mode === 'random') return Math.random() < 0.5
     return false
@@ -54,57 +46,53 @@ export function buildQuestions(elements: ElementItem[], config: QuizConfig, lang
     const el = sampleElement()
     if (!el) throw new Error('No elements')
 
+    // nameToValue → כותרת כללית + name בשורה מתחת
     if (template === 'nameToValue') {
-      const prompt = fill('quiz.templates.nameToValue', { name: nameFor(el) })
+      const prompt = lang === 'he' ? 'מה דרגת הקושי של:' : 'What is the difficulty of:'
       const correct: QuestionOption = { id: 'c', label: fmtVal(el.value), value: fmtVal(el.value) }
-      if (shouldOpen(template)) {
-        return { id: makeId(), template, prompt, correct, options: null, elementId: el.id, timeLimitSec: timeLimit }
-      }
+      if (shouldOpen()) return { id: makeId(), template, prompt, correct, options: null, elementId: el.id, timeLimitSec: timeLimit, name: nameFor(el) }
       const vals = nearestValues(el.value, el.value, 6)
       const distract = takeUnique(vals, 3).map((v,i) => ({ id: `d${i}`, label: fmtVal(v), value: fmtVal(v) }))
       const options = shuffle([correct, ...distract])
-      return { id: makeId(), template, prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: el.id, timeLimitSec: timeLimit }
+      return { id: makeId(), template, prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: el.id, timeLimitSec: timeLimit, name: nameFor(el) }
     }
 
+    // symbolToValue → כותרת כללית + symbol בשורה מתחת
     if (template === 'symbolToValue') {
-      const prompt = fill('quiz.templates.symbolToValue', { symbol: el.symbol })
+      const prompt = lang === 'he' ? 'מה דרגת הקושי של:' : 'What is the difficulty of:'
       const correct: QuestionOption = { id: 'c', label: fmtVal(el.value), value: fmtVal(el.value) }
-      if (shouldOpen(template)) {
-        return { id: makeId(), template, prompt, correct, options: null, elementId: el.id, timeLimitSec: timeLimit }
-      }
+      if (shouldOpen()) return { id: makeId(), template, prompt, correct, options: null, elementId: el.id, timeLimitSec: timeLimit, symbol: el.symbol }
       const vals = nearestValues(el.value, el.value, 6)
       const distract = takeUnique(vals, 3).map((v,i) => ({ id: `d${i}`, label: fmtVal(v), value: fmtVal(v) }))
       const options = shuffle([correct, ...distract])
-      return { id: makeId(), template, prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: el.id, timeLimitSec: timeLimit }
+      return { id: makeId(), template, prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: el.id, timeLimitSec: timeLimit, symbol: el.symbol }
     }
 
+    // valueToName → כותרת כללית + value בשורה מתחת
     if (template === 'valueToName') {
       const base = sampleElement()
       const target = base.value
-      const prompt = fill('quiz.templates.valueToName', { value: fmtVal(target) })
+      const prompt = lang === 'he' ? 'איזה אלמנט דרגת הקושי שלו היא:' : 'Which element has difficulty:'
       const correct: QuestionOption = { id: 'c', label: nameFor(base), value: base.id }
-      if (shouldOpen(template)) {
-        return { id: makeId(), template, prompt, correct, options: null, elementId: base.id, targetValue: target, timeLimitSec: timeLimit }
-      }
+      if (shouldOpen()) return { id: makeId(), template, prompt, correct, options: null, elementId: base.id, targetValue: target, timeLimitSec: timeLimit, value: fmtVal(target) }
       const exclude = new Set<string>([base.id])
       const near = byCloseValue(target, 8, exclude)
       const distract = takeUnique(near, 3).map((e,i) => ({ id: `d${i}`, label: nameFor(e), value: e.id }))
       const options = shuffle([correct, ...distract])
-      return { id: makeId(), template, prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: base.id, targetValue: target, timeLimitSec: timeLimit }
+      return { id: makeId(), template, prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: base.id, targetValue: target, timeLimitSec: timeLimit, value: fmtVal(target) }
     }
 
+    // valueToSymbol → כותרת כללית + value בשורה מתחת
     const base = sampleElement()
     const target = base.value
-    const prompt = fill('quiz.templates.valueToSymbol', { value: fmtVal(target) })
+    const prompt = lang === 'he' ? 'איזה אלמנט דרגת הקושי שלו היא:' : 'Which element has difficulty:'
     const correct: QuestionOption = { id: 'c', label: base.symbol, value: base.id }
-    if (shouldOpen('valueToSymbol')) {
-      return { id: makeId(), template: 'valueToSymbol', prompt, correct, options: null, elementId: base.id, targetValue: target, timeLimitSec: timeLimit }
-    }
+    if (shouldOpen()) return { id: makeId(), template: 'valueToSymbol', prompt, correct, options: null, elementId: base.id, targetValue: target, timeLimitSec: timeLimit, value: fmtVal(target) }
     const exclude = new Set<string>([base.id])
     const near = byCloseValue(target, 8, exclude)
     const distract = takeUnique(near, 3).map((e,i) => ({ id: `d${i}`, label: e.symbol, value: e.id }))
     const options = shuffle([correct, ...distract])
-    return { id: makeId(), template: 'valueToSymbol', prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: base.id, targetValue: target, timeLimitSec: timeLimit }
+    return { id: makeId(), template: 'valueToSymbol', prompt, correct: options.find(o => o.value === correct.value)!, options, elementId: base.id, targetValue: target, timeLimitSec: timeLimit, value: fmtVal(target) }
   }
 
   const list: QuizQuestion[] = []
