@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react'
 import {
   View,
   Text,
@@ -7,36 +7,38 @@ import {
   TextInput,
   Modal,
   FlatList,
-} from 'react-native';
-import { useAppTheme } from '@/shared/theme/theme';
-import { useLang } from '@/shared/state/lang';
-import { t } from '@/shared/i18n';
+} from 'react-native'
+import { useAppTheme } from '@/shared/theme/theme'
+import { useLang } from '@/shared/state/lang'
+import { t } from '@/shared/i18n'
 
-export type CountryCode = 'ISR' | 'GBR' | 'USA' | 'RUS' | 'UKR' | 'CHN';
-export type Gender = 'F' | 'M' | null;
-export type Track = 'league' | 'national' | 'international' | null;
+export type CountryCode = 'ISR' | 'GBR' | 'USA' | 'RUS' | 'UKR' | 'CHN'
+export type Gender = 'F' | 'M' | null
+export type Track = 'league' | 'national' | 'international' | null
+export type TrackLevel = string | null
 
 export type AthleteDetails = {
-  country: CountryCode;
-  autoBonus: boolean;
-  name: string;
-  club: string;
-  athleteNumber: string;
-  round: string;
-  gender: Gender;
-  track: Track;
-};
+  country: CountryCode
+  autoBonus: boolean
+  name: string
+  club: string
+  athleteNumber: string
+  round: string
+  gender: Gender
+  track: Track
+  level: TrackLevel
+}
 
 type Props = {
-  value: AthleteDetails;
-  onChange: (next: AthleteDetails) => void;
-};
+  value: AthleteDetails
+  onChange: (next: AthleteDetails) => void
+}
 
 type CountryOption = {
-  code: CountryCode;
-  labelKey: string;
-  flag: string;
-};
+  code: CountryCode
+  labelKey: string
+  flag: string
+}
 
 const COUNTRIES: CountryOption[] = [
   { code: 'ISR', labelKey: 'tariff.athlete.countryIsrael', flag: '🇮🇱' },
@@ -45,40 +47,68 @@ const COUNTRIES: CountryOption[] = [
   { code: 'RUS', labelKey: 'tariff.athlete.countryRussia', flag: '🇷🇺' },
   { code: 'UKR', labelKey: 'tariff.athlete.countryUkraine', flag: '🇺🇦' },
   { code: 'CHN', labelKey: 'tariff.athlete.countryChina', flag: '🇨🇳' },
-];
+]
+
+const LEVELS_BY_TRACK: { [K in Exclude<Track, null>]: string[] } = {
+  league: ['א', 'ב', 'ג', 'ד'],
+  national: ['1', '2', '3', '4', '5'],
+  international: ['Age 1', 'Age 2', 'Junior', 'Age 3', 'Senior'],
+}
 
 export default function AthleteDetailsSection({ value, onChange }: Props) {
-  const { colors } = useAppTheme();
-  const { lang } = useLang();
-  const isRTL = lang === 'he';
-  const [countryPickerVisible, setCountryPickerVisible] = useState(false);
+  const { colors } = useAppTheme()
+  const { lang } = useLang()
+  const isRTL = lang === 'he'
+  const [countryPickerVisible, setCountryPickerVisible] = useState(false)
 
-  const accent = colors.text;
+  const accent = colors.text
 
   const selectedCountry = useMemo(
     () => COUNTRIES.find(c => c.code === value.country) ?? COUNTRIES[0],
-    [value.country],
-  );
+    [value.country]
+  )
 
-  const isIsrael = value.country === 'ISR';
+  const isIsrael = value.country === 'ISR'
 
   const setField = <K extends keyof AthleteDetails>(key: K, v: AthleteDetails[K]) => {
-    onChange({ ...value, [key]: v });
-  };
+    onChange({ ...value, [key]: v })
+  }
 
   const genderLabel = (g: Gender) =>
     g === 'F'
       ? t(lang, 'tariff.athlete.genderF')
       : g === 'M'
       ? t(lang, 'tariff.athlete.genderM')
-      : '';
+      : ''
+
+  const autoBonusText = t(lang, 'tariff.athlete.autoBonus')
+
+  const handleTrackPress = (track: Exclude<Track, null>) => {
+    if (value.track === track) {
+      onChange({ ...value, track: null, level: null })
+    } else {
+      onChange({ ...value, track, level: null })
+    }
+  }
+
+  const currentLevels: string[] =
+    value.track && value.track in LEVELS_BY_TRACK
+      ? LEVELS_BY_TRACK[value.track as Exclude<Track, null>]
+      : []
+
+  const levelDirection =
+    value.track === 'international'
+      ? 'row'
+      : isRTL
+      ? 'row-reverse'
+      : 'row'
 
   return (
     <View style={styles.container}>
       <View
         style={[
           styles.row,
-          { flexDirection: isRTL ? 'row-reverse' : 'row' },
+          { flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'flex-end' },
         ]}
       >
         <View
@@ -124,54 +154,12 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
                   textAlign: isRTL ? 'right' : 'left',
                 },
               ]}
+              numberOfLines={1}
             >
               {t(lang, selectedCountry.labelKey)}
             </Text>
           </Pressable>
         </View>
-
-        <Pressable
-          onPress={() => setField('autoBonus', !value.autoBonus)}
-          style={({ pressed }) => [
-            styles.autoBonusContainer,
-            {
-              flexDirection: isRTL ? 'row-reverse' : 'row',
-              opacity: pressed ? 0.7 : 1,
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.checkboxOuter,
-              {
-                borderColor: colors.border,
-                backgroundColor: value.autoBonus ? accent + '33' : colors.card,
-              },
-            ]}
-          >
-            {value.autoBonus ? (
-              <View
-                style={[
-                  styles.checkboxInner,
-                  {
-                    backgroundColor: accent,
-                  },
-                ]}
-              />
-            ) : null}
-          </View>
-          <Text
-            style={[
-              styles.autoBonusLabel,
-              {
-                color: colors.text,
-                textAlign: isRTL ? 'right' : 'left',
-              },
-            ]}
-          >
-            {t(lang, 'tariff.athlete.autoBonus')}
-          </Text>
-        </Pressable>
       </View>
 
       {!isIsrael ? (
@@ -286,7 +274,10 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
               <TextInput
                 value={value.athleteNumber}
                 onChangeText={text =>
-                  setField('athleteNumber', text.replace(/[^0-9]/g, '').slice(0, 4))
+                  setField(
+                    'athleteNumber',
+                    text.replace(/[^0-9]/g, '').slice(0, 4)
+                  )
                 }
                 keyboardType="number-pad"
                 style={[
@@ -386,28 +377,100 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
                 <TrackChip
                   label={t(lang, 'tariff.athlete.trackLeague')}
                   selected={value.track === 'league'}
-                  onPress={() =>
-                    setField('track', value.track === 'league' ? null : 'league')
-                  }
+                  onPress={() => handleTrackPress('league')}
                 />
                 <TrackChip
                   label={t(lang, 'tariff.athlete.trackNational')}
                   selected={value.track === 'national'}
-                  onPress={() =>
-                    setField('track', value.track === 'national' ? null : 'national')
-                  }
+                  onPress={() => handleTrackPress('national')}
                 />
                 <TrackChip
                   label={t(lang, 'tariff.athlete.trackInternational')}
                   selected={value.track === 'international'}
-                  onPress={() =>
-                    setField(
-                      'track',
-                      value.track === 'international' ? null : 'international',
-                    )
-                  }
+                  onPress={() => handleTrackPress('international')}
                 />
               </View>
+
+              {value.track && currentLevels.length > 0 && (
+                <View style={styles.levelSection}>
+                  <FieldLabel
+                    text={t(lang, 'tariff.athlete.level')}
+                    color={colors.text}
+                    isRTL={isRTL}
+                  />
+                  <View
+                    style={[
+                      styles.levelRow,
+                      {
+                        flexDirection: levelDirection,
+                        flexWrap: value.track === 'national' ? 'nowrap' : 'wrap',
+                        justifyContent:
+                          value.track === 'national' ? 'space-between' : 'flex-start',
+                      },
+                    ]}
+                  >
+                    {currentLevels.map(level => (
+                      <LevelChip
+                        key={level}
+                        label={level}
+                        selected={value.level === level}
+                        onPress={() =>
+                          setField(
+                            'level',
+                            value.level === level ? null : (level as TrackLevel)
+                          )
+                        }
+                      />
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              <Pressable
+                onPress={() => setField('autoBonus', !value.autoBonus)}
+                style={({ pressed }) => [
+                  styles.autoBonusContainer,
+                  {
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    opacity: pressed ? 0.7 : 1,
+                    alignSelf: 'stretch',
+                  },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.checkboxOuter,
+                    {
+                      borderColor: colors.border,
+                      backgroundColor: value.autoBonus ? accent + '33' : colors.card,
+                    },
+                  ]}
+                >
+                  {value.autoBonus ? (
+                    <View
+                      style={[
+                        styles.checkboxInner,
+                        {
+                          backgroundColor: accent,
+                        },
+                      ]}
+                    />
+                  ) : null}
+                </View>
+                <View style={styles.autoBonusTextWrapper}>
+                  <Text
+                    style={[
+                      styles.autoBonusLabel,
+                      {
+                        color: colors.text,
+                        textAlign: isRTL ? 'right' : 'left',
+                      },
+                    ]}
+                  >
+                    {autoBonusText}
+                  </Text>
+                </View>
+              </Pressable>
             </View>
           </View>
         </>
@@ -418,19 +481,19 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
         onClose={() => setCountryPickerVisible(false)}
         selected={selectedCountry.code}
         onSelect={code => {
-          setField('country', code);
-          setCountryPickerVisible(false);
+          setField('country', code)
+          setCountryPickerVisible(false)
         }}
       />
     </View>
-  );
+  )
 }
 
 type FieldLabelProps = {
-  text: string;
-  color: string;
-  isRTL: boolean;
-};
+  text: string
+  color: string
+  isRTL: boolean
+}
 
 function FieldLabel({ text, color, isRTL }: FieldLabelProps) {
   return (
@@ -445,18 +508,18 @@ function FieldLabel({ text, color, isRTL }: FieldLabelProps) {
     >
       {text}
     </Text>
-  );
+  )
 }
 
 type ChipProps = {
-  label: string;
-  selected: boolean;
-  onPress: () => void;
-};
+  label: string
+  selected: boolean
+  onPress: () => void
+}
 
 function GenderChip({ label, selected, onPress }: ChipProps) {
-  const { colors } = useAppTheme();
-  const accent = colors.text;
+  const { colors } = useAppTheme()
+  const accent = colors.text
 
   return (
     <Pressable
@@ -481,12 +544,12 @@ function GenderChip({ label, selected, onPress }: ChipProps) {
         {label}
       </Text>
     </Pressable>
-  );
+  )
 }
 
 function TrackChip({ label, selected, onPress }: ChipProps) {
-  const { colors } = useAppTheme();
-  const accent = colors.text;
+  const { colors } = useAppTheme()
+  const accent = colors.text
 
   return (
     <Pressable
@@ -507,26 +570,63 @@ function TrackChip({ label, selected, onPress }: ChipProps) {
             color: colors.text,
           },
         ]}
-        numberOfLines={2}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.7}
+        ellipsizeMode="clip"
       >
         {label}
       </Text>
     </Pressable>
-  );
+  )
+}
+
+function LevelChip({ label, selected, onPress }: ChipProps) {
+  const { colors } = useAppTheme()
+  const accent = colors.text
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.levelChip,
+        {
+          borderColor: selected ? accent : colors.border,
+          backgroundColor: selected ? accent + '22' : colors.card,
+          opacity: pressed ? 0.7 : 1,
+        },
+      ]}
+    >
+      <Text
+        style={[
+          styles.levelChipText,
+          {
+            color: colors.text,
+          },
+        ]}
+        numberOfLines={1}
+        adjustsFontSizeToFit
+        minimumFontScale={0.8}
+        ellipsizeMode="clip"
+      >
+        {label}
+      </Text>
+    </Pressable>
+  )
 }
 
 type CountryPickerProps = {
-  visible: boolean;
-  selected: CountryCode;
-  onClose: () => void;
-  onSelect: (code: CountryCode) => void;
-};
+  visible: boolean
+  selected: CountryCode
+  onClose: () => void
+  onSelect: (code: CountryCode) => void
+}
 
 function CountryPickerModal({ visible, selected, onClose, onSelect }: CountryPickerProps) {
-  const { colors } = useAppTheme();
-  const { lang } = useLang();
-  const isRTL = lang === 'he';
-  const accent = colors.text;
+  const { colors } = useAppTheme()
+  const { lang } = useLang()
+  const isRTL = lang === 'he'
+  const accent = colors.text
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -555,7 +655,7 @@ function CountryPickerModal({ visible, selected, onClose, onSelect }: CountryPic
             data={COUNTRIES}
             keyExtractor={item => item.code}
             renderItem={({ item }) => {
-              const isSelected = item.code === selected;
+              const isSelected = item.code === selected
               return (
                 <Pressable
                   onPress={() => onSelect(item.code)}
@@ -584,7 +684,7 @@ function CountryPickerModal({ visible, selected, onClose, onSelect }: CountryPic
                     {t(lang, item.labelKey)}
                   </Text>
                 </Pressable>
-              );
+              )
             }}
           />
 
@@ -605,7 +705,7 @@ function CountryPickerModal({ visible, selected, onClose, onSelect }: CountryPic
         </View>
       </View>
     </Modal>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -623,6 +723,7 @@ const styles = StyleSheet.create({
   },
   countryBlock: {
     flexBasis: '55%',
+    maxWidth: 150,
   },
   countrySelector: {
     borderWidth: 1,
@@ -641,10 +742,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   autoBonusContainer: {
+    marginTop: 12,
+    paddingHorizontal: 4,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    marginTop: 16,
-    maxWidth: 140,
+    width: '100%',
+  },
+  autoBonusTextWrapper: {
+    flexShrink: 1,
+    flexGrow: 1,
   },
   checkboxOuter: {
     width: 20,
@@ -661,8 +767,7 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   autoBonusLabel: {
-    fontSize: 12,
-    flexShrink: 1,
+    fontSize: 13,
   },
   comingSoonBox: {
     marginTop: 8,
@@ -715,26 +820,51 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   trackRow: {
-    flexWrap: 'wrap',
-    justifyContent: 'flex-start',
+    flexWrap: 'nowrap',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    gap: 8,
+    columnGap: 8,
+    rowGap: 8,
   },
   trackChip: {
+    flex: 1,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderWidth: 1,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'stretch',
+    minWidth: 0,
+    marginHorizontal: 2,
+  },
+  trackChipText: {
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  levelSection: {
+    marginTop: 10,
+  },
+  levelRow: {
+    alignItems: 'center',
+    columnGap: 8,
+    rowGap: 8,
+    alignSelf: 'stretch',
+  },
+  levelChip: {
+    flexGrow: 0,
+    flexShrink: 0,
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderWidth: 1,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    alignSelf: 'flex-start',
-    minWidth: 90,
-    maxWidth: '100%',
+    minWidth: 60,
   },
-  trackChipText: {
-    fontSize: 13,
+  levelChipText: {
+    fontSize: 14,
     textAlign: 'center',
-    flexShrink: 1,
   },
   modalBackdrop: {
     flex: 1,
@@ -772,4 +902,4 @@ const styles = StyleSheet.create({
     color: '#ffffff',
     fontSize: 14,
   },
-});
+})

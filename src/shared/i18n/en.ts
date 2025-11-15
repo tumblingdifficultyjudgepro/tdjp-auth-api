@@ -148,6 +148,13 @@ tariff: {
     trackLeague: 'League',
     trackNational: 'National',
     trackInternational: 'International',
+    level: 'Level',
+  },
+
+  passes: {
+    pass1: 'Pass 1',
+    pass2: 'Pass 2',
+    select: 'Select Pass',
   },
 },
 

@@ -1,7 +1,7 @@
 import React from 'react'
 import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
 import { useRoute, useNavigation } from '@react-navigation/native'
-import { Audio } from 'expo-av'
+import { useAudioPlayer } from 'expo-audio'
 import { useLang } from '@/shared/state/lang'
 import { useAppTheme } from '@/shared/theme/theme'
 import { useQuizRun } from '../../hooks/useQuizRun'
@@ -26,56 +26,26 @@ export default function QuizRun() {
 
   const [fontsLoaded] = useFonts({ FrankRuhlLibre_700Bold })
 
-  const successRef = React.useRef<Audio.Sound | null>(null)
-  const failRef = React.useRef<Audio.Sound | null>(null)
+  const successPlayer = useAudioPlayer(require('../../../../../assets/success.mp3'))
+  const failPlayer = useAudioPlayer(require('../../../../../assets/fail.mp3'))
 
-  React.useEffect(() => {
-    let mounted = true
-    ;(async () => {
-      try {
-        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true })
-        const [s, f] = await Promise.all([
-          Audio.Sound.createAsync(require('../../../../../assets/success.mp3'), { shouldPlay: false }),
-          Audio.Sound.createAsync(require('../../../../../assets/fail.mp3'), { shouldPlay: false }),
-        ])
-        if (!mounted) {
-          await s.sound.unloadAsync()
-          await f.sound.unloadAsync()
-          return
-        }
-        successRef.current = s.sound
-        failRef.current = f.sound
-      } catch {}
-    })()
-    return () => {
-      mounted = false
-      if (successRef.current) {
-        successRef.current.unloadAsync().catch(() => {})
-        successRef.current = null
-      }
-      if (failRef.current) {
-        failRef.current.unloadAsync().catch(() => {})
-        failRef.current = null
-      }
-    }
-  }, [])
-
-  const play = async (snd: Audio.Sound | null) => {
-    if (!snd) return
-    try {
-      const st = await snd.getStatusAsync()
-      if ('isLoaded' in st && st.isLoaded) {
-        await snd.setPositionAsync(0)
-        await snd.playAsync()
-      }
-    } catch {}
+  const playSuccess = () => {
+    successPlayer.seekTo(0)
+    successPlayer.play()
   }
 
-  const playSuccess = () => play(successRef.current)
-  const playFail = () => play(failRef.current)
+  const playFail = () => {
+    failPlayer.seekTo(0)
+    failPlayer.play()
+  }
 
   const list = React.useMemo<ElementItem[]>(() => ELEMENTS as unknown as ElementItem[], [])
-  const { state, selectedId, remaining, locked, onChoose, onSubmit, next } = useQuizRun(list, config, lang, seedQids)
+  const { state, selectedId, remaining, locked, onChoose, onSubmit, next } = useQuizRun(
+    list,
+    config,
+    lang,
+    seedQids
+  )
 
   React.useEffect(() => {
     if (state.finished) {
@@ -110,7 +80,9 @@ export default function QuizRun() {
     onChoose(optId)
     const isCorrect = optId === q.correct.id
     const statuses: Record<string, 'idle' | 'correct' | 'wrong'> = {}
-    q.options!.forEach(o => { if (o.id === q.correct.id) statuses[o.id] = 'correct' })
+    q.options!.forEach(o => {
+      if (o.id === q.correct.id) statuses[o.id] = 'correct'
+    })
     if (!isCorrect) statuses[optId] = 'wrong'
     setStatusById(statuses)
     isCorrect ? playSuccess() : playFail()
@@ -172,7 +144,10 @@ export default function QuizRun() {
     if (remaining === 0 && !locked) {
       if (showOptions) {
         const s: Record<string, 'idle' | 'correct' | 'wrong'> = {}
-        if (q?.options) q.options.forEach(o => { if (o.id === q.correct.id) s[o.id] = 'correct' })
+        if (q?.options)
+          q.options.forEach(o => {
+            if (o.id === q.correct.id) s[o.id] = 'correct'
+          })
         setStatusById(s)
         onSubmit(null)
       } else {
@@ -201,16 +176,22 @@ export default function QuizRun() {
   }, [remaining, locked])
 
   const symbolForPrompt = String((q as any).symbol ?? '')
-  const nameForPrompt   = String((q as any).name   ?? '')
-  const valueForPrompt  = String((q as any).value  ?? '')
+  const nameForPrompt = String((q as any).name ?? '')
+  const valueForPrompt = String((q as any).value ?? '')
 
   const showSymbol = q.template === 'symbolToValue' && !!symbolForPrompt
-  const showName   = q.template === 'nameToValue'   && !!nameForPrompt
-  const showValue  = (q.template === 'valueToName' || q.template === 'valueToSymbol') && !!valueForPrompt
+  const showName = q.template === 'nameToValue' && !!nameForPrompt
+  const showValue =
+    (q.template === 'valueToName' || q.template === 'valueToSymbol') && !!valueForPrompt
 
   const PromptNode = (
     <View style={styles.promptWrap}>
-      <Text style={[styles.promptTop, { color: colors.text, writingDirection: isRTL ? 'rtl' : 'ltr' }]}>
+      <Text
+        style={[
+          styles.promptTop,
+          { color: colors.text, writingDirection: isRTL ? 'rtl' : 'ltr' },
+        ]}
+      >
         {q.prompt}
       </Text>
 
@@ -220,13 +201,21 @@ export default function QuizRun() {
             styles.promptBig,
             {
               color: colors.text,
-              fontFamily: fontsLoaded ? 'FrankRuhlLibre_700Bold' : Platform.select({ ios: 'Courier New', android: 'monospace', default: undefined }),
+              fontFamily: fontsLoaded
+                ? 'FrankRuhlLibre_700Bold'
+                : Platform.select({
+                    ios: 'Courier New',
+                    android: 'monospace',
+                    default: undefined,
+                  }),
               fontWeight: 'normal',
               writingDirection: 'ltr',
             },
           ]}
         >
-          {'\u2066'}{symbolForPrompt}{'\u2069'}
+          {'\u2066'}
+          {symbolForPrompt}
+          {'\u2069'}
         </Text>
       )}
 
@@ -252,13 +241,21 @@ export default function QuizRun() {
             styles.promptBig,
             {
               color: colors.text,
-              fontFamily: fontsLoaded ? 'FrankRuhlLibre_700Bold' : Platform.select({ ios: 'Courier New', android: 'monospace', default: undefined }),
+              fontFamily: fontsLoaded
+                ? 'FrankRuhlLibre_700Bold'
+                : Platform.select({
+                    ios: 'Courier New',
+                    android: 'monospace',
+                    default: undefined,
+                  }),
               fontWeight: 'normal',
               writingDirection: 'ltr',
             },
           ]}
         >
-          {'\u2066'}{valueForPrompt}{'\u2069'}
+          {'\u2066'}
+          {valueForPrompt}
+          {'\u2069'}
         </Text>
       )}
     </View>
@@ -266,8 +263,16 @@ export default function QuizRun() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
-      <QuestionHeader index={state.index} total={state.questions.length} remainingSec={remaining} timeLimitSec={timeLimit} />
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <QuestionHeader
+        index={state.index}
+        total={state.questions.length}
+        remainingSec={remaining}
+        timeLimitSec={timeLimit}
+      />
+      <ScrollView
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+      >
         {PromptNode}
         {showOptions && (
           <View style={styles.options}>

@@ -148,12 +148,18 @@ tariff: {
     trackLeague: 'ליגה',
     trackNational: 'לאומי',
     trackInternational: 'בינלאומי',
+    level: 'דרגה',
+  },
+
+  passes: {
+    pass1: 'פס 1',
+    pass2: 'פס 2',
+    select: 'בחר פס',
   },
 },
 
 common: {
   close: 'סגור',
-  /* מפתחות נוספים שכבר יש לך... */
 },
 
 } as const;

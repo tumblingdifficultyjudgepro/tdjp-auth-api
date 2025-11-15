@@ -1,21 +1,15 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { NavigationContainer, DefaultTheme, Theme } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppThemeProvider, useAppTheme } from '@/shared/theme/theme';
 import { LangProvider, useLang } from '@/shared/state/lang';
 import Tabs from '@/app/navigation/Tabs';
-import { getCachedNavState, setCachedNavState } from '@/app/navigation/navPersistence';
 
 function WithNav() {
   const { colors } = useAppTheme();
   const { lang } = useLang();
   const isRTL = lang === 'he';
-
-  // רימאונט של עץ הניווט כששפה/RTL משתנים (נשאר),
-  // אבל עם initialState כדי להישאר באותו מסך
-  const navKey = `nav-${lang}-${isRTL ? 'rtl' : 'ltr'}`;
-  const initialState = useMemo(() => getCachedNavState(), [navKey]);
 
   const navTheme: Theme = {
     ...DefaultTheme,
@@ -31,12 +25,7 @@ function WithNav() {
   };
 
   return (
-    <NavigationContainer
-      key={navKey}
-      theme={navTheme}
-      initialState={initialState}
-      onStateChange={(state) => setCachedNavState(state)}
-    >
+    <NavigationContainer key={`${lang}-${isRTL ? 'rtl' : 'ltr'}`} theme={navTheme}>
       <Tabs />
     </NavigationContainer>
   );

@@ -75,8 +75,9 @@ export default function Tabs() {
 
   return (
     <Tab.Navigator
-      key={`tabs-${lang}-${isRTL ? 'rtl' : 'ltr'}`}   // רימאונט של הטאבים בשינוי שפה
-      detachInactiveScreens={false}                   // אל תנתק פרגמנטים – מפחית את “No view found…”
+      key={`tabs-${lang}-${isRTL ? 'rtl' : 'ltr'}`}
+      initialRouteName="Home"
+      detachInactiveScreens={false}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.tint,
@@ -108,7 +109,7 @@ export default function Tabs() {
     >
       {SCREENS.map(s => (
         <Tab.Screen
-          key={`${s.name}-${lang}`}   // מסייע לרימאונט נקי
+          key={`${s.name}-${lang}`}
           name={s.name as any}
           component={s.component}
         />
@@ -119,7 +120,19 @@ export default function Tabs() {
 
 const styles = StyleSheet.create({
   centerBtnWrapper: { alignItems: 'center', justifyContent: 'center', top: -18 },
-  centerBtn: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#007aff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 4 }, elevation: 6 },
+  centerBtn: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#007aff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 6
+  },
   centerBtnPressed: { opacity: 0.7 },
   pressedUp: { transform: [{ translateY: -1 }] },
   homeIconWrap: { transform: [{ translateY: 2 }] },
