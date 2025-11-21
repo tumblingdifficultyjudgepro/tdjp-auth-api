@@ -4,7 +4,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
 import { t } from '@/shared/i18n';
-import type { SortKey, SortOrder } from '../types';
+import type { SortKey, SortOrder } from '@/features/calculator/types';
 
 type Props = {
   sortKey: SortKey;
@@ -27,7 +27,7 @@ export default function SortingBar({ sortKey, sortOrder, onChangeKey, onToggleOr
       : t(lang, 'calculator.sort.usage');
 
   return (
-    <View style={[styles.wrap]}>
+    <View style={styles.wrap}>
       <View style={[styles.sidePack, isRTL ? { right: 0, flexDirection: 'row-reverse' } : { left: 0, flexDirection: 'row' }]}>
         <Pressable onPress={onChangeKey} style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.btnText, { color: colors.text }]}>{keyLabel}</Text>

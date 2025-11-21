@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
 import { useAppTheme } from '@/shared/theme/theme';
-import AutoShrinkText from '@/features/calculator/components/AutoShrinkText';
+import AutoShrinkText from '../text/TariffAutoShrinkText';
 
 type SlotItem = { id: string; label: string; value: number };
 

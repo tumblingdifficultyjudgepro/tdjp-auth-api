@@ -86,6 +86,9 @@ export default function Tabs() {
         tabBarStyle: {
           backgroundColor: colors.card,
           borderTopColor: 'transparent',
+          borderTopWidth: 0,
+          elevation: 0,
+          shadowOpacity: 0,
           height: barHeight,
           paddingBottom: insetBottom,
           paddingTop: 8

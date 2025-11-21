@@ -1,19 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
-import TopBar from '@/shared/ui/TopBar';
-import { useAppTheme } from '@/shared/theme/theme';
-import { useLang } from '@/shared/state/lang';
-import { t } from '@/shared/i18n';
-import useCalculator from '../state/useCalculator';
-import SelectionBar from '../components/SelectionBar';
-import SummaryBar from '../components/SummaryBar';
-import ActionsBar from '../components/ActionsBar';
-import SortingBar from '../components/SortingBar';
-import ElementsGrid from '../components/ElementsGrid';
+import React, { useEffect, useRef, useState } from 'react'
+import { View, StyleSheet } from 'react-native'
+import TopBar from '@/shared/ui/TopBar'
+import { useAppTheme } from '@/shared/theme/theme'
+import { useLang } from '@/shared/state/lang'
+import { t } from '@/shared/i18n'
+import useCalculator from '../state/useCalculator'
+import SelectionBar from '../components/SelectionBar'
+import SummaryBar from '../components/SummaryBar'
+import ActionsBar from '@/features/elementKeyboard/components/ActionsBar'
+import SortingBar from '@/features/elementKeyboard/components/SortingBar'
+import ElementsGrid from '@/features/elementKeyboard/components/ElementsGrid'
 
 export default function CalculatorScreen() {
-  const { colors } = useAppTheme();
-  const { lang } = useLang();
+  const { colors } = useAppTheme()
+  const { lang } = useLang()
   const {
     mode,
     elements,
@@ -28,7 +28,7 @@ export default function CalculatorScreen() {
     total,
     deleteLast,
     clearAll,
-  } = useCalculator();
+  } = useCalculator()
 
   const header = (
     <View
@@ -56,28 +56,26 @@ export default function CalculatorScreen() {
         isRTL={lang === 'he'}
       />
     </View>
-  );
+  )
 
-  const forceLTR = mode === 'symbol';
-  const barDirection: 'ltr' | 'rtl' = forceLTR ? 'ltr' : (lang === 'he' ? 'rtl' : 'ltr');
+  const forceLTR = mode === 'symbol'
+  const barDirection: 'ltr' | 'rtl' = forceLTR ? 'ltr' : lang === 'he' ? 'rtl' : 'ltr'
 
-  // --- הפרדה בין "המרה לעבר סימבולס" לבין "כתיבה ישירה בסימבולס" ---
-  const prevModeRef = useRef<typeof mode>(mode);
-  const [mirrorPulse, setMirrorPulse] = useState(false);
+  const prevModeRef = useRef<typeof mode>(mode)
+  const [mirrorPulse, setMirrorPulse] = useState(false)
 
   useEffect(() => {
     if (prevModeRef.current !== mode) {
-      const switchedToSymbols = mode === 'symbol';
+      const switchedToSymbols = mode === 'symbol'
       if (switchedToSymbols && lang === 'he') {
-        setMirrorPulse(true);
-        requestAnimationFrame(() => setMirrorPulse(false));
+        setMirrorPulse(true)
+        requestAnimationFrame(() => setMirrorPulse(false))
       } else {
-        setMirrorPulse(false);
+        setMirrorPulse(false)
       }
-      prevModeRef.current = mode;
+      prevModeRef.current = mode
     }
-  }, [mode, lang]);
-  // ----------------------------------------------------------------------
+  }, [mode, lang])
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -102,18 +100,20 @@ export default function CalculatorScreen() {
         <View style={{ flex: 1 }}>
           <ElementsGrid
             elements={elements}
-            onSelect={(it) => addById(it.id, it.value)}
+            onSelect={it => addById(it.id, it.value)}
             titleFontSize={14}
             header={header}
             forceLTR={forceLTR}
+            isSymbolMode={mode === 'symbol'}
+            symbolFontSize={25}   
           />
         </View>
       </View>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   body: { flex: 1, paddingHorizontal: 12, paddingTop: 12 },
-});
+})

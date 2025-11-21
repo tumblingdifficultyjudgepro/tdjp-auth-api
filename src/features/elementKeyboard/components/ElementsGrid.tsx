@@ -1,20 +1,45 @@
-// src/features/calculator/components/ElementsGrid.tsx
-import React, { useMemo } from 'react';
+import React, { useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
 import { FlatList, Pressable, Text, View, StyleSheet, Dimensions } from 'react-native';
 import { useAppTheme } from '@/shared/theme/theme';
-import type { DisplayItem } from '../types';
+import type { DisplayItem } from '@/features/calculator/types';
 
 type Props = {
   elements: DisplayItem[];
   onSelect: (item: DisplayItem) => void;
   titleFontSize: number;
   header?: React.ReactElement | null;
-  forceLTR?: boolean; // סימבולים = true
+  forceLTR?: boolean;
+  isSymbolMode?: boolean;
+  symbolFontSize?: number;
+  extraBottomPadding?: number;
 };
 
-export default function ElementsGrid({ elements, onSelect, titleFontSize, header, forceLTR }: Props) {
+export type ElementsGridHandle = {
+  scrollToTop: () => void;
+};
+
+function ElementsGridInner(
+  {
+    elements,
+    onSelect,
+    titleFontSize,
+    header,
+    forceLTR,
+    isSymbolMode,
+    symbolFontSize,
+    extraBottomPadding,
+  }: Props,
+  ref: React.Ref<ElementsGridHandle>,
+) {
   const { colors } = useAppTheme();
   const numColumns = 3;
+  const listRef = useRef<FlatList<DisplayItem> | null>(null);
+
+  useImperativeHandle(ref, () => ({
+    scrollToTop() {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    },
+  }));
 
   const size = useMemo(() => {
     const w = Dimensions.get('window').width;
@@ -24,28 +49,32 @@ export default function ElementsGrid({ elements, onSelect, titleFontSize, header
     return Math.max(96, Math.floor(cell));
   }, []);
 
-  const font = Math.max(10, Math.min(titleFontSize, 22));
+  const baseFont = Math.max(10, Math.min(titleFontSize, 22));
+  const font = isSymbolMode && symbolFontSize != null ? symbolFontSize : baseFont;
   const line = Math.round(font * 1.15);
   const max = line * 3;
+  const paddingBottom = 24 + (extraBottomPadding ?? 0);
 
   return (
     <FlatList
+      ref={listRef}
       data={elements}
       keyExtractor={(item, index) => `${item.id}_${index}`}
       numColumns={numColumns}
       ListHeaderComponent={header ?? null}
-      contentContainerStyle={{ paddingBottom: 24, paddingTop: 8 }}
+      contentContainerStyle={{ paddingBottom, paddingTop: 8 }}
       columnWrapperStyle={{ justifyContent: 'space-between' }}
       renderItem={({ item }) => (
         <Pressable
           onPress={() => onSelect(item)}
-          style={[
+          style={({ pressed }) => [
             styles.card,
             {
               width: size,
               height: size,
               backgroundColor: colors.card,
-              borderColor: colors.border,
+              borderColor: pressed ? '#BDBDBD' : colors.border,
+              opacity: pressed ? 0.8 : 1,
             },
           ]}
         >
@@ -55,7 +84,6 @@ export default function ElementsGrid({ elements, onSelect, titleFontSize, header
               ellipsizeMode="clip"
               allowFontScaling={false}
               lineBreakStrategyIOS="standard"
-              // @ts-ignore Android only
               textBreakStrategy="simple"
               style={{
                 fontWeight: '900',
@@ -86,8 +114,28 @@ export default function ElementsGrid({ elements, onSelect, titleFontSize, header
   );
 }
 
+export default forwardRef<ElementsGridHandle, Props>(ElementsGridInner);
+
 const styles = StyleSheet.create({
-  card: { borderRadius: 16, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  center: { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8, width: '100%', height: '100%', position: 'relative' },
-  value: { position: 'absolute', bottom: 8, fontSize: 13, fontWeight: '800' },
+  card: {
+    borderRadius: 16,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 10,
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 8,
+    width: '100%',
+    height: '100%',
+    position: 'relative',
+  },
+  value: {
+    position: 'absolute',
+    bottom: 8,
+    fontSize: 13,
+    fontWeight: '800',
+  },
 });

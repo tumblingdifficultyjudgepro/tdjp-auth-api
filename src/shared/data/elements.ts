@@ -8,6 +8,15 @@ export type Element = {
   direction: Direction;
 };
 
+export type ElementItem = {
+  id: string;
+  name: string;
+  symbol?: string;
+  value: number;
+  direction?: Direction;
+  usage?: number;
+};
+
 export const ELEMENTS: Element[] = [
   { id: 'front_handspring', name: { he: 'קפיצת ידיים', en: 'Front Handspring' }, symbol: 'H', value: 0.1, direction: 'forward' },
   { id: 'front_tuck', name: { he: 'סלטה קדימה בקירוס', en: 'Front Tuck' }, symbol: '.O', value: 0.6, direction: 'forward' },

@@ -1,1 +1,1 @@
-export { default } from './screens/QuizSettingsScreen';
+export { default } from './screens/QuizSettingsWizard';

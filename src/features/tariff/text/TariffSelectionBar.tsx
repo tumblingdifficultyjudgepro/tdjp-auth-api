@@ -1,28 +1,27 @@
-import React, { useMemo, useState } from 'react'
-import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native'
-import { useAppTheme } from '@/shared/theme/theme'
-import AutoShrinkText from './AutoShrinkText'
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
+import { useAppTheme } from '@/shared/theme/theme';
+import AutoShrinkText from './TariffAutoShrinkText';
 
-type DisplaySlot = { id: string; label: string; value: number }
+type DisplaySlot = { id: string; label: string; value: number };
 
 type Props = {
-  items: DisplaySlot[]
-  direction: 'ltr' | 'rtl'
-  titleFontSize: number
-  forceLTR?: boolean
-  forceMirror?: boolean
-  textMaxFont?: number
-  textMinFont?: number
-}
+  items: DisplaySlot[];
+  direction: 'ltr' | 'rtl';
+  titleFontSize: number;
+  forceLTR?: boolean;
+  forceMirror?: boolean;
+  textMaxFont?: number;
+  textMinFont?: number;
+  maxSlots?: number;
+};
 
-const MAX_SLOTS = 8
-const H_LABEL = 56
-const H_VALUE = 28
-const COLOR_VALUE = '#FFC107'
-const COLOR_VALUE_BG = '#FFF8E1'
-const SLOT_HPAD = 4
+const H_LABEL = 56;
+const H_VALUE = 28;
+const COLOR_VALUE = '#FFC107';
+const SLOT_HPAD = 4;
 
-export default function SelectionBar({
+export default function TariffSelectionBar({
   items,
   direction,
   titleFontSize,
@@ -30,46 +29,47 @@ export default function SelectionBar({
   forceMirror,
   textMaxFont = 22,
   textMinFont = 10,
+  maxSlots = 8,
 }: Props) {
-  const { colors } = useAppTheme()
+  const { colors } = useAppTheme();
 
-  const isDirRTL = direction === 'rtl'
-  const layoutRTL = forceLTR ? false : isDirRTL
+  const isDirRTL = direction === 'rtl';
+  const layoutRTL = forceLTR ? false : isDirRTL;
 
   const ordered = useMemo(() => {
-    let arr = items
-    if (forceLTR && forceMirror) arr = [...arr].reverse()
-    return arr
-  }, [items, forceLTR, forceMirror])
+    let arr = items;
+    if (forceLTR && forceMirror) arr = [...arr].reverse();
+    return arr;
+  }, [items, forceLTR, forceMirror]);
 
   const slots = useMemo(() => {
-    const out: Array<DisplaySlot | null> = new Array(MAX_SLOTS).fill(null)
-    const k = Math.min(ordered.length, MAX_SLOTS)
+    const out: Array<DisplaySlot | null> = new Array(maxSlots).fill(null);
+    const k = Math.min(ordered.length, maxSlots);
     if (layoutRTL) {
-      for (let i = 0; i < k; i++) out[MAX_SLOTS - 1 - i] = ordered[i]
+      for (let i = 0; i < k; i++) out[maxSlots - 1 - i] = ordered[i];
     } else {
-      for (let i = 0; i < k; i++) out[i] = ordered[i]
+      for (let i = 0; i < k; i++) out[i] = ordered[i];
     }
-    return out
-  }, [ordered, layoutRTL])
+    return out;
+  }, [ordered, layoutRTL, maxSlots]);
 
-  const writing = forceLTR ? 'ltr' : layoutRTL ? 'rtl' : 'ltr'
-  const CENTER = { textAlign: 'center' as const }
+  const writing = forceLTR ? 'ltr' : layoutRTL ? 'rtl' : 'ltr';
+  const CENTER = { textAlign: 'center' as const };
 
-  const [slotWidths, setSlotWidths] = useState<number[]>(Array(MAX_SLOTS).fill(0))
+  const [slotWidths, setSlotWidths] = useState<number[]>(Array(maxSlots).fill(0));
   const onSlotLayout = (idx: number) => (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width
+    const w = e.nativeEvent.layout.width;
     setSlotWidths(prev => {
-      if (prev[idx] === w) return prev
-      const next = [...prev]
-      next[idx] = w
-      return next
-    })
-  }
+      if (prev[idx] === w) return prev;
+      const next = [...prev];
+      next[idx] = w;
+      return next;
+    });
+  };
 
-  const maxFontText = Math.max(textMinFont, Math.min(textMaxFont, titleFontSize))
-  const fixedSymbolFont = Math.max(10, Math.min(titleFontSize, 22))
-  const textMode = !forceLTR
+  const maxFontText = Math.max(textMinFont, Math.min(textMaxFont, titleFontSize));
+  const fixedSymbolFont = Math.max(10, Math.min(titleFontSize, 22));
+  const textMode = !forceLTR;
 
   return (
     <View style={styles.outer}>
@@ -134,15 +134,7 @@ export default function SelectionBar({
         {slots.map((x, idx) => (
           <View
             key={`value_slot_${idx}`}
-            style={[
-              styles.slot,
-              styles.valueSlot,
-              {
-                height: H_VALUE,
-                backgroundColor: COLOR_VALUE_BG,
-                borderColor: 'transparent',
-              },
-            ]}
+            style={[styles.slot, styles.valueSlot, { height: H_VALUE, borderColor: colors.border }]}
           >
             <Text numberOfLines={1} style={styles.valueText}>
               {x ? x.value.toFixed(1) : '—'}
@@ -151,7 +143,7 @@ export default function SelectionBar({
         ))}
       </View>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -167,14 +159,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: SLOT_HPAD,
   },
-  valueSlot: {
-    borderRadius: 8,
-    borderWidth: 0,
-  },
-  valueText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: COLOR_VALUE,
-    textAlign: 'center',
-  },
-})
+  valueSlot: { borderRadius: 8 },
+  valueText: { fontSize: 13, fontWeight: '800', color: COLOR_VALUE, textAlign: 'center' },
+});
