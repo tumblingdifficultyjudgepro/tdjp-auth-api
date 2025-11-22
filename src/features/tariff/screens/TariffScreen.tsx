@@ -16,10 +16,62 @@ import type { DisplayItem } from '@/features/calculator/types';
 import TariffStickyActions from '@/features/tariff/components/TariffStickyActions';
 import TariffExportSuccessModal from '@/features/tariff/components/TariffExportSuccessModal';
 import { exportTariffPdf } from '@/features/tariff/export/exportTariffPdf';
+import { TariffExportData, TariffPassRowData } from '@/features/tariff/export/tariffOverlay';
+import { TariffLang } from '@/features/tariff/background/tariffBackground';
+import { getElementById } from '@/shared/data/elements';
 
 type ElementsGridHandle = {
   scrollToTop: () => void;
 };
+
+function mapPassDisplayToExport(items: DisplayItem[]): TariffPassRowData {
+  const symbols: (string | null)[] = [];
+  const values: (number | string | null)[] = [];
+  const bonuses: (number | string | null)[] = [];
+
+  for (let i = 0; i < 8; i++) {
+    const item = items[i] as any;
+    if (!item) {
+      symbols.push(null);
+      values.push(null);
+      bonuses.push(null);
+      continue;
+    }
+
+    const base = item.id ? getElementById(item.id) : undefined;
+
+    const symbolFromBase =
+      typeof base?.symbol === 'string' && base.symbol.trim() !== ''
+        ? base.symbol
+        : null;
+
+    const symbol =
+      symbolFromBase ??
+      (typeof item.symbol === 'string' && item.symbol.trim() !== ''
+        ? item.symbol
+        : typeof item.label === 'string'
+        ? item.label
+        : '');
+
+    const value =
+      typeof item.value === 'number' || typeof item.value === 'string'
+        ? item.value
+        : typeof item.dd === 'number' || typeof item.dd === 'string'
+        ? item.dd
+        : null;
+
+    const bonus =
+      typeof item.bonus === 'number' || typeof item.bonus === 'string'
+        ? item.bonus
+        : 0;
+
+    symbols.push(symbol || null);
+    values.push(value);
+    bonuses.push(bonus);
+  }
+
+  return { symbols, values, bonuses };
+}
 
 export default function TariffScreen() {
   const { colors } = useAppTheme();
@@ -98,7 +150,25 @@ export default function TariffScreen() {
     if (isExporting) return;
     try {
       setIsExporting(true);
-      const result = await exportTariffPdf(lang === 'he' ? 'he' : 'en');
+
+      const tariffLang: TariffLang = lang === 'he' ? 'he' : 'en';
+
+      const data: TariffExportData = {
+        lang: tariffLang,
+        form: {
+          athleteName: athlete.name,
+          club: athlete.club,
+          gender: athlete.gender ? String(athlete.gender) : '',
+          track: athlete.track ? String(athlete.track) : '',
+          level: athlete.level ? String(athlete.level) : '',
+          athleteNo: athlete.athleteNumber,
+          rotation: athlete.round,
+        },
+        pass1: mapPassDisplayToExport(pass1Display),
+        pass2: mapPassDisplayToExport(pass2Display),
+      };
+
+      const result = await exportTariffPdf(data);
       setExportedUri(result.uri);
       setShowExportModal(true);
     } catch (e) {

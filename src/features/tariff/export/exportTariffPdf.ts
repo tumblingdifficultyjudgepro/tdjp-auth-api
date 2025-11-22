@@ -1,19 +1,15 @@
 import * as Print from 'expo-print';
-import {
-  renderTariffBackground,
-  PAGE_W,
-  PAGE_H,
-  TariffLang,
-} from '@/features/tariff/background/tariffBackground';
+import { PAGE_W, PAGE_H } from '@/features/tariff/background/tariffBackground';
+import { TariffExportData, buildTariffPageHtml } from '@/features/tariff/export/tariffOverlay';
 
 export type ExportTariffResult = {
   uri: string;
 };
 
 export async function exportTariffPdf(
-  lang: TariffLang = 'he',
+  data: TariffExportData,
 ): Promise<ExportTariffResult> {
-  const html = renderTariffBackground(lang, PAGE_W, PAGE_H);
+  const html = buildTariffPageHtml(data);
 
   const { uri } = await Print.printToFileAsync({
     html,
