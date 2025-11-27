@@ -1,5 +1,5 @@
 import React, { useMemo, forwardRef, useImperativeHandle, useRef } from 'react';
-import { FlatList, Pressable, Text, View, StyleSheet, Dimensions } from 'react-native';
+import { FlatList, Pressable, Text, View, StyleSheet, Dimensions, NativeSyntheticEvent, NativeScrollEvent } from 'react-native';
 import { useAppTheme } from '@/shared/theme/theme';
 import type { DisplayItem } from '@/features/calculator/types';
 
@@ -12,6 +12,7 @@ type Props = {
   isSymbolMode?: boolean;
   symbolFontSize?: number;
   extraBottomPadding?: number;
+  onScrollOffsetChange?: (offsetY: number) => void;
 };
 
 export type ElementsGridHandle = {
@@ -28,6 +29,7 @@ function ElementsGridInner(
     isSymbolMode,
     symbolFontSize,
     extraBottomPadding,
+    onScrollOffsetChange,
   }: Props,
   ref: React.Ref<ElementsGridHandle>,
 ) {
@@ -54,6 +56,12 @@ function ElementsGridInner(
   const line = Math.round(font * 1.15);
   const max = line * 3;
   const paddingBottom = 24 + (extraBottomPadding ?? 0);
+
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (onScrollOffsetChange) {
+      onScrollOffsetChange(e.nativeEvent.contentOffset.y);
+    }
+  };
 
   return (
     <FlatList
@@ -110,6 +118,8 @@ function ElementsGridInner(
           <Text style={{ color: colors.text, fontWeight: '800' }}>—</Text>
         </View>
       }
+      onScroll={handleScroll}
+      scrollEventThrottle={16}
     />
   );
 }

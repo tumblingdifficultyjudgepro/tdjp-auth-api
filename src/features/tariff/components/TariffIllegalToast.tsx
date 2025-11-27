@@ -1,28 +1,28 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { useAppTheme } from '@/shared/theme/theme';
-import { useLang } from '@/shared/state/lang';
-import { t } from '@/shared/i18n';
+import React, { useEffect, useRef } from 'react'
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native'
+import { useAppTheme } from '@/shared/theme/theme'
+import { useLang } from '@/shared/state/lang'
+import { t } from '@/shared/i18n'
 
 type Props = {
-  visible: boolean;
-  onHide: () => void;
-};
+  visible: boolean
+  onHide: () => void
+}
 
 export default function TariffIllegalToast({ visible, onHide }: Props) {
-  const { colors } = useAppTheme();
-  const { lang } = useLang();
+  const { colors } = useAppTheme()
+  const { lang } = useLang()
 
-  const opacity = useRef(new Animated.Value(0)).current;
-  const scale = useRef(new Animated.Value(0.9)).current;
-  const isAnimatingOut = useRef(false);
+  const opacity = useRef(new Animated.Value(0)).current
+  const scale = useRef(new Animated.Value(0.9)).current
+  const isAnimatingOut = useRef(false)
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) return
 
-    isAnimatingOut.current = false;
-    opacity.setValue(0);
-    scale.setValue(0.9);
+    isAnimatingOut.current = false
+    opacity.setValue(0)
+    scale.setValue(0.9)
 
     Animated.parallel([
       Animated.timing(opacity, {
@@ -37,11 +37,11 @@ export default function TariffIllegalToast({ visible, onHide }: Props) {
         easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start()
 
     const timeoutId = setTimeout(() => {
-      if (isAnimatingOut.current) return;
-      isAnimatingOut.current = true;
+      if (isAnimatingOut.current) return
+      isAnimatingOut.current = true
       Animated.parallel([
         Animated.timing(opacity, {
           toValue: 0,
@@ -56,16 +56,16 @@ export default function TariffIllegalToast({ visible, onHide }: Props) {
           useNativeDriver: true,
         }),
       ]).start(({ finished }) => {
-        if (finished) onHide();
-      });
-    }, 3000);
+        if (finished) onHide()
+      })
+    }, 3000)
 
     return () => {
-      clearTimeout(timeoutId);
-    };
-  }, [visible, opacity, scale, onHide]);
+      clearTimeout(timeoutId)
+    }
+  }, [visible, opacity, scale, onHide])
 
-  if (!visible) return null;
+  if (!visible) return null
 
   return (
     <View style={styles.overlay} pointerEvents="auto">
@@ -104,7 +104,7 @@ export default function TariffIllegalToast({ visible, onHide }: Props) {
         </Text>
       </Animated.View>
     </View>
-  );
+  )
 }
 
 const styles = StyleSheet.create({
@@ -151,4 +151,4 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
-});
+})

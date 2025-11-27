@@ -9,6 +9,19 @@ const en = {
     settings: 'Settings',
   },
 
+  settings: {
+    tariffLocation: {
+      title: 'Tariff files location',
+      choose: 'Choose location',
+      change: 'Change location',
+      currentPrefix: 'Current location:',
+      notSet: 'Not selected yet',
+    },
+    tariffAllowIllegalExport: {
+      title: 'Allow tariff export for illegal passes',
+    },
+  },
+
   screens: {
     home: 'Home',
     calculator: 'Calculator',
@@ -173,6 +186,7 @@ const en = {
 
     messages: {
       selectPassFirst: 'You need to select a pass first',
+      passesIllegal: 'Passes are not legal',
     },
 
     actions: {
@@ -186,10 +200,28 @@ const en = {
       close: 'Close',
       share: 'Share',
     },
+
+    confirmIllegalExport: {
+      title: 'Passes are not legal',
+      message: 'Passes are not legal. Do you want to export to PDF anyway?',
+      yes: 'Yes',
+      no: 'No',
+    },
   },
 
   common: {
     close: 'Close',
+  },
+
+  errors: {
+    intraRepeat: 'Element repeated in pass',
+    maxBackFull: 'Max 3 back fulls per pass',
+    crossRepeat: 'Element repeated across passes',
+    doubleBackFullFinish: 'Only one pass may end with a Back Full',
+    flickToForward: 'Back handspring into a forward element',
+    tempoToForward: 'Whip/Tempo into a forward element',
+    directionChange: 'Change of direction in middle of pass',
+    cannotExport: 'Cannot export PDF while errors exist',
   },
 } as const;
 

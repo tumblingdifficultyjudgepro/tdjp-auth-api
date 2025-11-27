@@ -68,8 +68,15 @@ export default function SelectionBar({
   }
 
   const maxFontText = Math.max(textMinFont, Math.min(textMaxFont, titleFontSize))
-  const fixedSymbolFont = Math.max(10, Math.min(titleFontSize, 22))
   const textMode = !forceLTR
+
+  const getSymbolFontSize = (label: string): number => {
+    const len = label ? String(label).length : 0
+    if (len <= 1) return 20
+    if (len === 2) return 18
+    if (len === 3) return 14
+    return 10
+  }
 
   return (
     <View style={styles.outer}>
@@ -98,20 +105,28 @@ export default function SelectionBar({
                   }}
                 />
               ) : (
-                <Text
-                  numberOfLines={3}
-                  style={{
-                    ...CENTER,
-                    fontSize: fixedSymbolFont,
-                    lineHeight: Math.round(fixedSymbolFont * 1.1),
-                    maxHeight: Math.round(fixedSymbolFont * 1.1) * 3,
-                    fontWeight: '900',
-                    color: colors.text,
-                    writingDirection: writing,
-                  }}
-                >
-                  {x.label}
-                </Text>
+                (() => {
+                  const label = x.label ?? ''
+                  const symbolFont = getSymbolFontSize(label)
+                  const lineHeight = Math.round(symbolFont * 1.1)
+                  const maxHeight = lineHeight * 3
+                  return (
+                    <Text
+                      numberOfLines={1}
+                      style={{
+                        ...CENTER,
+                        fontSize: symbolFont,
+                        lineHeight,
+                        maxHeight,
+                        fontWeight: '900',
+                        color: colors.text,
+                        writingDirection: writing,
+                      }}
+                    >
+                      {label}
+                    </Text>
+                  )
+                })()
               )
             ) : (
               <Text

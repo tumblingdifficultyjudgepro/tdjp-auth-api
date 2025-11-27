@@ -7,12 +7,37 @@ import { useLang } from '@/shared/state/lang';
 type Props = {
   onReset: () => void;
   onExport: () => void;
+  onExportBlocked?: () => void;
   isExporting?: boolean;
+  disableExport?: boolean;
 };
 
-export default function TariffStickyActions({ onReset, onExport, isExporting }: Props) {
+export default function TariffStickyActions({
+  onReset,
+  onExport,
+  onExportBlocked,
+  isExporting,
+  disableExport,
+}: Props) {
   const { colors } = useAppTheme();
   const { lang } = useLang();
+
+  const illegalBlocked = !!disableExport;
+  const exportBusy = !!isExporting;
+  const dimmed = illegalBlocked || exportBusy;
+
+  const handleExportPress = () => {
+    if (exportBusy) {
+      return;
+    }
+    if (illegalBlocked) {
+      if (onExportBlocked) {
+        onExportBlocked();
+      }
+      return;
+    }
+    onExport();
+  };
 
   return (
     <View style={styles.wrapper} pointerEvents="box-none">
@@ -33,13 +58,12 @@ export default function TariffStickyActions({ onReset, onExport, isExporting }: 
         </Pressable>
 
         <Pressable
-          onPress={onExport}
-          disabled={isExporting}
+          onPress={handleExportPress}
           style={({ pressed }) => [
             styles.fab,
             {
               backgroundColor: colors.tint,
-              opacity: isExporting ? 0.6 : pressed ? 0.8 : 1,
+              opacity: dimmed ? 0.6 : pressed ? 0.8 : 1,
             },
           ]}
         >

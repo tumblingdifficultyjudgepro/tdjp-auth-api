@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Text, TextProps, NativeSyntheticEvent, TextLayoutEventData } from 'react-native';
 
 type Props = TextProps & {
@@ -36,30 +36,17 @@ export default function AutoShrinkTextTariff({
     setFont(maxFont);
   }, [text, maxFont, minFont, maxLines, lineHeightRatio, maxWidth]);
 
-  const limitWidth = useMemo(() => {
-    if (maxWidth == null) return undefined;
-    return Math.max(0, maxWidth - horizontalPadding * 2);
-  }, [maxWidth, horizontalPadding]);
-
   const onTextLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
     if (doneRef.current) return;
+
     if (safetyRef.current++ > 40) {
       doneRef.current = true;
+      setFont(lowRef.current);
       return;
     }
 
     const lines = e.nativeEvent.lines ?? [];
     const fitsLines = lines.length <= (maxLines ?? 1);
-
-    let fitsWidth = true;
-    if (limitWidth != null) {
-      for (const ln of lines) {
-        if ((ln?.width ?? 0) > limitWidth + 0.1) {
-          fitsWidth = false;
-          break;
-        }
-      }
-    }
 
     let wordSplit = false;
     for (let i = 0; i < lines.length - 1; i++) {
@@ -73,7 +60,7 @@ export default function AutoShrinkTextTariff({
       }
     }
 
-    const fits = fitsLines && fitsWidth && !wordSplit;
+    const fits = fitsLines && !wordSplit;
 
     if (!fits) {
       highRef.current = Math.max(lowRef.current, Math.min(highRef.current, font - 1));
@@ -89,7 +76,9 @@ export default function AutoShrinkTextTariff({
 
     const next = Math.floor((lowRef.current + highRef.current + 1) / 2);
     if (next !== font) setFont(next);
-    else doneRef.current = true;
+    else {
+      doneRef.current = true;
+    }
   };
 
   const line = Math.round(font * lineHeightRatio);
