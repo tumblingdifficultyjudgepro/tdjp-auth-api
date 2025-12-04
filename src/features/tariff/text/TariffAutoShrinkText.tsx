@@ -23,6 +23,7 @@ export default function AutoShrinkTextTariff({
   ...rest
 }: Props) {
   const [font, setFont] = useState(maxFont);
+  
   const lowRef = useRef(minFont);
   const highRef = useRef(maxFont);
   const doneRef = useRef(false);
@@ -39,15 +40,20 @@ export default function AutoShrinkTextTariff({
   const onTextLayout = (e: NativeSyntheticEvent<TextLayoutEventData>) => {
     if (doneRef.current) return;
 
-    if (safetyRef.current++ > 40) {
+    // מנגנון בטיחות למניעת לולאות אינסופיות
+    if (safetyRef.current++ > 50) {
       doneRef.current = true;
       setFont(lowRef.current);
       return;
     }
 
     const lines = e.nativeEvent.lines ?? [];
+    
+    // בדיקה 1: האם חרגנו מכמות השורות?
     const fitsLines = lines.length <= (maxLines ?? 1);
 
+    // בדיקה 2: האם מילה נחתכה באמצע? (Word Split)
+    // זה קורה כשהטקסט נדחס בכוח לרוחב הנתון
     let wordSplit = false;
     for (let i = 0; i < lines.length - 1; i++) {
       const a = lines[i]?.text ?? '';
@@ -62,6 +68,7 @@ export default function AutoShrinkTextTariff({
 
     const fits = fitsLines && !wordSplit;
 
+    // לוגיקת החיפוש הבינארי
     if (!fits) {
       highRef.current = Math.max(lowRef.current, Math.min(highRef.current, font - 1));
     } else {
@@ -84,13 +91,28 @@ export default function AutoShrinkTextTariff({
   const line = Math.round(font * lineHeightRatio);
   const maxH = line * (maxLines ?? 1);
 
+  // חישוב רוחב ל-Style:
+  // אם קיבלנו maxWidth מבחוץ - נשתמש בו (פחות ריפוד).
+  // אם לא - נשתמש ב-100% כדי למלא את ההורה.
+  // זה התיקון הקריטי שימנע מהטקסט "לברוח" הצידה.
+  const finalWidth = maxWidth ? maxWidth - (horizontalPadding * 2) : '100%';
+
   return (
     <Text
       {...rest}
+      key={`ast_${text}_${maxWidth ?? 'u'}`}
       allowFontScaling={false}
       numberOfLines={maxLines}
       onTextLayout={onTextLayout}
-      style={[{ fontSize: font, lineHeight: line, maxHeight: maxH }, style as any]}
+      style={[
+        { 
+          fontSize: font, 
+          lineHeight: line, 
+          maxHeight: maxH,
+          width: finalWidth, // הוספנו את זה חזרה! זה מכריח שבירת שורות.
+        }, 
+        style as any
+      ]}
     >
       {text}
     </Text>

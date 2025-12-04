@@ -223,6 +223,37 @@ const en = {
     directionChange: 'Change of direction in middle of pass',
     cannotExport: 'Cannot export PDF while errors exist',
   },
+
+  dialogs: {
+    exitApp: {
+      title: 'Exit App',
+      message: 'Are you sure you want to exit?',
+      exit: 'Exit',
+      stay: 'Stay',
+    },
+  },
+
+feedback: {
+    btnLabel: 'Suggest Idea / Report Bug',
+    title: 'Send Feedback',
+    typeIdea: 'Feature Idea',
+    typeBug: 'Bug Report',
+    name: 'Full Name',
+    subject: 'Subject',
+    message: 'Message',
+    attach: 'Attach Image',
+    send: 'Send',
+    cancel: 'Cancel',
+    maxImages: 'Max 3 images',
+    noPermission: 'Gallery permission denied',
+    errorTitle: 'Error',
+    sendError: 'Send failed',
+    successIdeaTitle: 'Thanks for the idea!',
+    successIdeaBody: 'We will consider it.',
+    successBugTitle: 'Thanks for the report!',
+    successBugBody: 'We will fix it soon.',
+    close: 'Close',
+  },
 } as const;
 
 export default en;

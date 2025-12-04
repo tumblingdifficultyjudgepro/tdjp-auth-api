@@ -1,9 +1,10 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react'
-import { StyleSheet, View, Platform, Linking, LayoutChangeEvent } from 'react-native'
+import { StyleSheet, View, Platform, Linking, LayoutChangeEvent, BackHandler } from 'react-native'
 import * as Sharing from 'expo-sharing'
 import * as FileSystemLegacy from 'expo-file-system/legacy'
 import * as IntentLauncher from 'expo-intent-launcher'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import { useAppTheme } from '@/shared/theme/theme'
 import { useLang } from '@/shared/state/lang'
 import TopBar from '@/shared/ui/TopBar'
@@ -132,6 +133,7 @@ async function savePdfToDownloads(tempUri: string): Promise<string> {
 export default function TariffScreen() {
   const { colors } = useAppTheme()
   const { lang } = useLang()
+  const nav = useNavigation<any>()
   const isRTL = lang === 'he'
 
   const [elementMode, setElementMode] = useState<'text' | 'symbol'>('text')
@@ -154,6 +156,21 @@ export default function TariffScreen() {
     track: null,
     level: null,
   })
+
+  // === לוגיקת חזרה ל-Home (מתוקן) ===
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        nav.navigate('Home'); 
+        return true; 
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [nav])
+  );
+  // ==================================
 
   const [topBarHeight, setTopBarHeight] = useState(0)
   const [gridOffsetY, setGridOffsetY] = useState(0)
@@ -575,21 +592,42 @@ export default function TariffScreen() {
       </View>
 
       {showStickyPassHeader && activePass && (
-        <View style={[styles.stickyPassWrapper, { top: topBarHeight }]}>
-          <TariffPassRow
-            label={activePassLabel}
-            items={activePassItems}
-            maxSlots={maxSlots}
-            direction={barDirection}
-            isActive={true}
-            onPress={() => setActivePass(null)}
-            isSymbolMode={elementMode === 'symbol'}
-            symbolFontSize={slotSymbolFontSize}
-            showBonusRow={false}
-            bonusValues={activePassBonuses}
-            illegalIndices={activePassIllegalIndices}
-            slotWidthOverrides={stickySlotWidths}
-          />
+        <View
+          style={[
+            styles.stickyPassWrapper,
+            {
+              top: topBarHeight + 4, 
+              elevation: 4,
+              shadowColor: '#000',
+              shadowOffset: { width: 0, height: 2 },
+              shadowOpacity: 0.1,
+              shadowRadius: 4,
+            },
+          ]}
+        >
+          <View style={{ 
+              backgroundColor: colors.bg, 
+              borderRadius: 12,
+              overflow: 'hidden' 
+          }}>
+            <TariffPassRow
+              key={`sticky_pass_${activePass}`}
+              label={activePassLabel}
+              items={activePassItems}
+              maxSlots={maxSlots}
+              direction={barDirection}
+              isActive={true}
+              onPress={() => setActivePass(null)}
+              isSymbolMode={elementMode === 'symbol'}
+              symbolFontSize={slotSymbolFontSize}
+              showBonusRow={false}
+              showValueRow={false}
+              bonusValues={activePassBonuses}
+              illegalIndices={activePassIllegalIndices}
+              slotWidthOverrides={stickySlotWidths}
+              isSticky={true}
+            />
+          </View>
         </View>
       )}
 
@@ -656,7 +694,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 8,
     right: 8,
-    paddingTop: 4,
+    paddingTop: 0,
     zIndex: 5,
   },
 })

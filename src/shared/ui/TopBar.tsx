@@ -39,17 +39,19 @@ export default function TopBar({
   const isRTL = lang === 'he';
   const [open, setOpen] = useState(false);
 
-  const BackBtn = showBack ? (
+  // --- הגדרת הכפתורים ---
+
+  // כפתור חזור
+  const BackBtnRaw = (
     <Pressable
       onPress={onBack}
       style={[styles.btn, { backgroundColor: colors.card, borderColor: colors.border }]}
       hitSlop={12}
       accessibilityLabel={t(lang, 'quiz.settings.back')}
     >
-      <Ionicons name="chevron-back" size={20} color={colors.text} />
+      {/* === התיקון כאן: שימוש ב-chevron-forward במקום arrow-forward === */}
+      <Ionicons name={isRTL ? "chevron-forward" : "chevron-back"} size={20} color={colors.text} />
     </Pressable>
-  ) : (
-    <View style={styles.placeholder} />
   );
 
   const SettingsBtn = (
@@ -76,26 +78,61 @@ export default function TopBar({
     <View style={styles.placeholder} />
   );
 
-  const leftSlotNoBack = isRTL ? ToggleBtn : SettingsBtn;
-  const rightSlotNoBack = isRTL ? SettingsBtn : ToggleBtn;
-  const leftSlotWithBack = isRTL ? BackBtn : SettingsBtn;
-  const rightSlotWithBack = isRTL ? SettingsBtn : BackBtn;
+  // --- לוגיקת המיקום ---
+
+  let LeftContent;
+  let RightContent;
+
+  if (showBack) {
+    if (isRTL) {
+      // עברית + יש כפתור חזור: ימין = [הגדרות][חזור], שמאל = [טוגל]
+      RightContent = (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {SettingsBtn}
+          {BackBtnRaw}
+        </View>
+      );
+      LeftContent = showElementToggle ? ToggleBtn : <View style={styles.placeholder} />;
+    } else {
+      // אנגלית + יש כפתור חזור: שמאל = [חזור][הגדרות], ימין = [טוגל]
+      LeftContent = (
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {BackBtnRaw}
+          {SettingsBtn}
+        </View>
+      );
+      RightContent = showElementToggle ? ToggleBtn : <View style={styles.placeholder} />;
+    }
+  } else {
+    // מצב רגיל (ללא כפתור חזור)
+    if (isRTL) {
+      LeftContent = showElementToggle ? ToggleBtn : <View style={styles.placeholder} />;
+      RightContent = SettingsBtn;
+    } else {
+      LeftContent = SettingsBtn;
+      RightContent = showElementToggle ? ToggleBtn : <View style={styles.placeholder} />;
+    }
+  }
 
   return (
     <>
       <SafeAreaView edges={['top']} style={{ backgroundColor: colors.bg }}>
         <View style={[styles.wrap, { backgroundColor: colors.bg, borderBottomColor: colors.border }]}>
+          
           <View style={styles.sideLeft}>
-            {showBack ? leftSlotWithBack : leftSlotNoBack}
+            {LeftContent}
           </View>
+          
           <View style={styles.center}>
             <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
               {titleKey ? t(lang, titleKey) : ''}
             </Text>
           </View>
+          
           <View style={styles.sideRight}>
-            {showBack ? rightSlotWithBack : rightSlotNoBack}
+            {RightContent}
           </View>
+
         </View>
       </SafeAreaView>
       <SettingsSheet visible={open} onClose={() => setOpen(false)} />
@@ -118,6 +155,8 @@ const styles = StyleSheet.create({
     top: 10,
     height: BTN,
     justifyContent: 'center',
+    flexDirection: 'row', 
+    alignItems: 'center', 
   },
   sideRight: {
     position: 'absolute',
@@ -125,13 +164,19 @@ const styles = StyleSheet.create({
     top: 10,
     height: BTN,
     justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   center: {
     alignSelf: 'center',
     justifyContent: 'center',
-    maxWidth: '70%',
+    maxWidth: '60%',
   },
-  title: { fontSize: 26, fontWeight: '900', textAlign: 'center' },
+  title: { 
+    fontSize: 26, 
+    fontWeight: '900', 
+    textAlign: 'center' 
+  },
   btn: {
     width: BTN,
     height: BTN,
@@ -142,4 +187,3 @@ const styles = StyleSheet.create({
   },
   placeholder: { width: BTN, height: BTN, borderRadius: BTN / 2 },
 });
-   

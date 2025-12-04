@@ -1,6 +1,6 @@
 import React from 'react'
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native'
-import { useRoute, useNavigation } from '@react-navigation/native'
+import { View, Text, StyleSheet, ScrollView, Platform, BackHandler } from 'react-native'
+import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native'
 import { useAudioPlayer } from 'expo-audio'
 import { useLang } from '@/shared/state/lang'
 import { useAppTheme } from '@/shared/theme/theme'
@@ -25,6 +25,20 @@ export default function QuizRun() {
   const { colors } = useAppTheme()
 
   const [fontsLoaded] = useFonts({ FrankRuhlLibre_700Bold })
+
+  // === חסימת כפתור חזור בזמן מבחן (מתוקן) ===
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        return true; 
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      return () => subscription.remove();
+    }, [])
+  );
+  // ===========================================
 
   const successPlayer = useAudioPlayer(require('../../../../../assets/success.mp3'))
   const failPlayer = useAudioPlayer(require('../../../../../assets/fail.mp3'))

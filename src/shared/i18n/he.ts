@@ -223,6 +223,37 @@ const he = {
     directionChange: "שינוי כיוון תנועה באמצע פס",
     cannotExport: "לא ניתן לייצא PDF בזמן שיש שגיאות",
   },
+
+  dialogs: {
+    exitApp: {
+      title: 'יציאה מהאפליקציה',
+      message: 'האם את/ה בטוח/ה שברצונך לצאת?',
+      exit: 'צא',
+      stay: 'הישאר',
+    },
+  },
+
+ feedback: {
+    btnLabel: 'הצע רעיון / דווח על באג',
+    title: 'שליחת פידבק',
+    typeIdea: 'רעיון לשיפור',
+    typeBug: 'באג לתיקון',
+    name: 'שם מלא',
+    subject: 'נושא',
+    message: 'תוכן ההודעה',
+    attach: 'צרף תמונה',
+    send: 'שלח',
+    cancel: 'ביטול',
+    maxImages: 'מקסימום 3 תמונות',
+    noPermission: 'אין הרשאת גישה לגלריה',
+    errorTitle: 'שגיאה',
+    sendError: 'שגיאה בשליחה',
+    successIdeaTitle: 'תודה על הרעיון!',
+    successIdeaBody: 'נשקול ליישם אותו.',
+    successBugTitle: 'תודה על הדיווח!',
+    successBugBody: 'ננסה לטפל בזה בהקדם.',
+    close: 'סגור',
+},
 } as const;
 
 export default he;

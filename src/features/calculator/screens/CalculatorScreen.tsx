@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState, useMemo } from 'react'
-import { View, StyleSheet } from 'react-native'
+import { View, StyleSheet, BackHandler } from 'react-native'
+import { useNavigation, useFocusEffect } from '@react-navigation/native'
 import TopBar from '@/shared/ui/TopBar'
 import { useAppTheme } from '@/shared/theme/theme'
 import { useLang } from '@/shared/state/lang'
@@ -14,6 +15,21 @@ import ElementsGrid from '@/features/elementKeyboard/components/ElementsGrid'
 export default function CalculatorScreen() {
   const { colors } = useAppTheme()
   const { lang } = useLang()
+  const nav = useNavigation<any>()
+
+  // === חזרה ל-Home בלחיצה על כפתור חזור ===
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        nav.navigate('Home');
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [nav])
+  );
+  // ========================================
+
   const {
     mode,
     elements,

@@ -2,8 +2,6 @@ import React, { useMemo, useState, useEffect } from 'react'
 import { View, Text, StyleSheet, LayoutChangeEvent, Pressable } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppTheme } from '@/shared/theme/theme'
-import AutoShrinkTextTariff from '@/features/tariff/text/TariffAutoShrinkText'
-import WordWrapNoBreak from '@/features/tariff/text/TariffWordWrapNoBreak'
 
 type DisplaySlot = { id: string; label: string; value: number }
 
@@ -24,6 +22,8 @@ type Props = {
   useAutoShrink?: boolean
   onSlotWidthMeasured?: (idx: number, width: number) => void
   slotWidthOverrides?: number[]
+  // === פרמטר חדש ===
+  isSticky?: boolean
 }
 
 const H_LABEL = 56
@@ -32,24 +32,16 @@ const H_BONUS = 24
 const COLOR_VALUE = '#FFC107'
 const COLOR_VALUE_BG = '#FFF8E1'
 const COLOR_BONUS_BG = '#B3E5FC'
-const SLOT_HPAD = 4
+const SLOT_HPAD = 0 
 const COLOR_ILLEGAL_BORDER = '#DC2626'
 const COLOR_WARNING = '#DC2626'
 
 function getSymbolFontSizeByLength(label: string): number {
   const len = label ? label.length : 0
-  if (len <= 1) return 20
+  if (len <= 1) return 20 
   if (len === 2) return 18
   if (len === 3) return 14
   return 10
-}
-
-function getTextFontSizeByLength(label: string): number {
-  const len = label ? label.length : 0
-  if (len <= 8) return 16
-  if (len <= 14) return 13
-  if (len <= 22) return 11
-  return 9
 }
 
 export default function TariffPassRow({
@@ -69,6 +61,8 @@ export default function TariffPassRow({
   useAutoShrink = true,
   onSlotWidthMeasured,
   slotWidthOverrides,
+  // === קבלת הפרמטר החדש ===
+  isSticky = false,
 }: Props) {
   const { colors } = useAppTheme()
   const accent = colors.text
@@ -92,9 +86,7 @@ export default function TariffPassRow({
     return out
   }, [ordered, layoutRTL, maxSlots])
 
-  const [slotWidths, setSlotWidths] = useState<number[]>(() =>
-    Array(maxSlots).fill(0)
-  )
+  const [slotWidths, setSlotWidths] = useState<number[]>(() => Array(maxSlots).fill(0))
 
   useEffect(() => {
     setSlotWidths(Array(maxSlots).fill(0))
@@ -112,9 +104,6 @@ export default function TariffPassRow({
       onSlotWidthMeasured(idx, w)
     }
   }
-
-  const maxFontText = 18
-  const minFontText = 5
 
   const illegalSlotSet = useMemo(() => {
     const set = new Set<number>()
@@ -141,7 +130,6 @@ export default function TariffPassRow({
 
   const hasWarnings = !!warningMessages && warningMessages.length > 0
   const isRtlWarning = isHebrewTitle
-
   const activeBorderColor = isActive ? accent : colors.border
   const activeBackgroundColor = isActive ? accent + '22' : 'transparent'
 
@@ -150,7 +138,8 @@ export default function TariffPassRow({
     : slotWidths
 
   return (
-    <View style={styles.wrapper}>
+    // === השינוי כאן: אם זה סטיקי, אין מרווח תחתון ===
+    <View style={[styles.wrapper, isSticky && { marginBottom: 0 }]}>
       <Pressable
         onPress={onPress}
         style={({ pressed }) => [
@@ -179,16 +168,9 @@ export default function TariffPassRow({
         <View style={styles.slotsOuter}>
           <View style={styles.row}>
             {slots.map((x, idx) => {
-              const symbolFont =
-                x && isSymbolMode
-                  ? getSymbolFontSizeByLength(String(x.label))
-                  : 0
-
               const isIllegal = illegalSlotSet.has(idx)
-
-              const textFont = x
-                ? getTextFontSizeByLength(String(x.label))
-                : maxFontText
+              const forcedWidth = effectiveWidths[idx] ? effectiveWidths[idx] : undefined
+              const symbolFont = x && isSymbolMode ? getSymbolFontSizeByLength(String(x.label)) : 0
 
               return (
                 <View
@@ -197,8 +179,11 @@ export default function TariffPassRow({
                     styles.slot,
                     {
                       height: H_LABEL,
+                      width: forcedWidth,
                       borderColor: isIllegal ? COLOR_ILLEGAL_BORDER : colors.border,
                       backgroundColor: colors.card,
+                      overflow: 'hidden',
+                      paddingHorizontal: SLOT_HPAD,
                     },
                   ]}
                   onLayout={onSlotLayout(idx)}
@@ -207,57 +192,45 @@ export default function TariffPassRow({
                     isSymbolMode ? (
                       <Text
                         numberOfLines={1}
-                        allowFontScaling={false}
+                        adjustsFontSizeToFit
                         style={{
                           ...CENTER,
                           fontSize: symbolFont,
-                          lineHeight: symbolFont * 1.1,
-                          maxHeight: symbolFont * 1.3,
                           fontWeight: '900',
                           color: colors.text,
-                          writingDirection: 'ltr',
+                          width: '100%',
                         }}
                       >
                         {x.label}
                       </Text>
-                    ) : useAutoShrink ? (
-                      <AutoShrinkTextTariff
-                        text={x.label}
-                        maxFont={maxFontText}
-                        minFont={minFontText}
-                        maxLines={3}
-                        lineHeightRatio={1.1}
-                        maxWidth={effectiveWidths[idx] || undefined}
-                        horizontalPadding={SLOT_HPAD}
-                        style={{
-                          ...CENTER,
-                          fontWeight: '900',
-                          color: colors.text,
-                          writingDirection: writing,
-                        }}
-                      />
                     ) : (
-                      <WordWrapNoBreak
-                        text={x.label}
-                        fontSize={textFont}
-                        maxLines={3}
-                        lineHeightRatio={1.1}
-                        style={{
-                          ...CENTER,
-                          fontWeight: '900',
-                          color: colors.text,
-                          writingDirection: writing,
-                        }}
-                      />
+                      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}>
+                        <Text
+                          adjustsFontSizeToFit={true}
+                          minimumFontScale={0.3} 
+                          numberOfLines={3} 
+                          textBreakStrategy="simple"
+                          android_hyphenationFrequency="none"
+                          style={{
+                            textAlign: 'center',
+                            fontWeight: '900',
+                            color: colors.text,
+                            fontSize: 11, 
+                            lineHeight: 12,
+                            writingDirection: writing,
+                          }}
+                        >
+                          {x.label}
+                        </Text>
+                      </View>
                     )
                   ) : (
                     <Text
                       style={{
                         ...CENTER,
-                        fontSize: 18,
+                        fontSize: 18, 
                         fontWeight: '900',
                         color: colors.text,
-                        writingDirection: writing,
                       }}
                     >
                       —
@@ -278,12 +251,13 @@ export default function TariffPassRow({
                     styles.valueSlot,
                     {
                       height: H_VALUE,
+                      width: effectiveWidths[idx] ? effectiveWidths[idx] : undefined,
                       backgroundColor: COLOR_VALUE_BG,
                       borderColor: 'transparent',
                     },
                   ]}
                 >
-                  <Text numberOfLines={1} style={styles.valueText}>
+                  <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5} style={styles.valueText}>
                     {x ? x.value.toFixed(1) : '—'}
                   </Text>
                 </View>
@@ -297,17 +271,8 @@ export default function TariffPassRow({
                 const rawBonus = bonusesSlots[idx]
                 const hasElement = !!slot
                 let bonusText = '—'
-
                 if (hasElement) {
-                  if (
-                    rawBonus == null ||
-                    typeof rawBonus !== 'number' ||
-                    !Number.isFinite(rawBonus)
-                  ) {
-                    bonusText = '0.0'
-                  } else {
-                    bonusText = rawBonus.toFixed(1)
-                  }
+                   bonusText = (rawBonus != null && Number.isFinite(rawBonus)) ? rawBonus.toFixed(1) : '0.0'
                 }
 
                 return (
@@ -318,18 +283,21 @@ export default function TariffPassRow({
                       styles.bonusSlot,
                       {
                         height: H_BONUS,
+                        width: effectiveWidths[idx] ? effectiveWidths[idx] : undefined,
                         backgroundColor: COLOR_BONUS_BG,
                         borderColor: 'transparent',
                       },
                     ]}
                   >
                     <Text
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.5}
                       style={{
                         ...CENTER,
-                        fontSize: 14,
+                        fontSize: 14, 
                         fontWeight: '800',
                         color: '#01579B',
-                        writingDirection: isSymbolMode ? 'ltr' : writing,
+                        writingDirection: 'ltr',
                       }}
                     >
                       {bonusText}
@@ -370,9 +338,7 @@ export default function TariffPassRow({
               <Text
                 style={[
                   styles.warningText,
-                  {
-                    textAlign: isRtlWarning ? 'right' : 'left',
-                  },
+                  { textAlign: isRtlWarning ? 'right' : 'left' },
                 ]}
                 numberOfLines={2}
               >
@@ -387,25 +353,19 @@ export default function TariffPassRow({
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    marginBottom: 4,
-  },
+  wrapper: { marginBottom: 4 },
   container: {
     borderRadius: 12,
     borderWidth: 1.5,
     paddingHorizontal: 8,
     paddingVertical: 8,
   },
-  labelRow: {
-    marginBottom: 6,
-  },
-  passTitle: {
+  labelRow: { marginBottom: 6 },
+  passTitle: { 
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '800' 
   },
-  slotsOuter: {
-    paddingHorizontal: 2,
-  },
+  slotsOuter: { paddingHorizontal: 2 },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -421,20 +381,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: SLOT_HPAD,
   },
-  valueSlot: {
-    borderRadius: 8,
-    borderWidth: 0,
-  },
+  valueSlot: { borderRadius: 8, borderWidth: 0 },
   valueText: {
     fontSize: 13,
     fontWeight: '800',
     color: COLOR_VALUE,
     textAlign: 'center',
   },
-  bonusSlot: {
-    borderRadius: 8,
-    borderWidth: 0,
-  },
+  bonusSlot: { borderRadius: 8, borderWidth: 0 },
   warningRow: {
     alignItems: 'flex-start',
     marginTop: 4,

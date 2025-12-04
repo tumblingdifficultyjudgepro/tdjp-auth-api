@@ -1,11 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, FlatList, Pressable, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
+import { View, Text, FlatList, Pressable, StyleSheet, Dimensions, Animated, Easing, BackHandler } from 'react-native';
 import { Ionicons, Feather } from '@expo/vector-icons';
 import { useAudioPlayer } from 'expo-audio';
 import { useAppTheme } from '@/shared/theme/theme';
 import { ELEMENTS, keyboardElementsFor } from '@/shared/data/elements';
 import { useLang } from '@/shared/state/lang';
 import TopBar from '@/shared/ui/TopBar';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 
@@ -74,7 +75,21 @@ function CardItem({
 export default function FlashcardsScreen() {
   const { colors } = useAppTheme();
   const { lang } = useLang();
+  const nav = useNavigation<any>();
   const isRTL = lang === 'he';
+
+  // === חזרה ל-Home בלחיצה על כפתור חזור ===
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        nav.navigate('Home');
+        return true;
+      };
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [nav])
+  );
+  // ========================================
 
   const forward = useMemo(() => keyboardElementsFor(lang, 'forward'), [lang]);
   const backward = useMemo(() => keyboardElementsFor(lang, 'backward'), [lang]);

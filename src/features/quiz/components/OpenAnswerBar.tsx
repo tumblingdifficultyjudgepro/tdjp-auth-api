@@ -93,13 +93,16 @@ export default function OpenAnswerBar({
           styles.displayRow,
           {
             flexDirection: isRTL ? 'row' : 'row-reverse',
-            backgroundColor: '#fff',
+            backgroundColor: '#fff', // הרקע תמיד לבן
             borderColor: frameBorderColor,
           },
         ]}
       >
         <View style={styles.displayTextWrap}>
-          <Text numberOfLines={1} style={[styles.displayText, { color: colors.text }]}>
+          {/* FIX: Text color forced to black (#000000) because the background is hardcoded to white (#fff).
+             Using colors.text (dynamic) caused white-on-white issues in dark mode.
+          */}
+          <Text numberOfLines={1} style={[styles.displayText, { color: '#000000' }]}>
             {value?.length ? value : placeholder}
           </Text>
         </View>
