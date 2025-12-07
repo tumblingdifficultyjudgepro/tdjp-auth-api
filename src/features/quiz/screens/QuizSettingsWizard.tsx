@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, BackHandler } from 'react-native';
 import TopBar from '@/shared/ui/TopBar';
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
@@ -12,7 +12,7 @@ import StepPrompt from './steps/StepPrompt';
 import StepMapping from './steps/StepMapping';
 import StepCountTimer from './steps/StepCountTimer';
 import { Mode, QuestionForm, PromptKind, Mapping, TimerPreset } from '@/features/quiz/types';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 type StepId = 'mode' | 'form' | 'prompt' | 'mapping' | 'count_timer';
 
@@ -53,6 +53,31 @@ export default function QuizSettingsWizard() {
   const idx = Math.max(0, flow.indexOf(step));
   const isLast = idx === flow.length - 1;
 
+  // לוגיקת ניווט אחורה
+  const onBack = useCallback(() => {
+    if (idx > 0) {
+      // אם אנחנו באמצע התהליך - חזור שלב אחד אחורה
+      const prevIdx = Math.max(0, idx - 1);
+      setStep(flow[prevIdx]);
+    } else {
+      // אם אנחנו בעמוד הראשון - חזור למסך הבית
+      nav.navigate('Home');
+    }
+  }, [idx, flow, nav]);
+
+  // האזנה לכפתור חזור פיזי
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        onBack();
+        return true;
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [onBack])
+  );
+
   const isValid = useMemo(() => {
     if (step === 'mode') return mode === 'custom' || mode === 'random';
     if (step === 'form') return form !== null;
@@ -74,6 +99,7 @@ export default function QuizSettingsWizard() {
     if (isLast) {
       const cfg = buildConfig();
       if (!cfg) { release(); return; }
+      if (mode === 'random' && form === null) setForm('mcq'); 
       setTimeout(() => {
         if (!isMountedRef.current) return;
         nav.navigate('QuizRun', { config: cfg });
@@ -84,16 +110,7 @@ export default function QuizSettingsWizard() {
       setStep(flow[nextIdx]);
       setTimeout(release, 200);
     }
-  }, [isLast, idx, flow, buildConfig, nav]);
-
-  const onBack = useCallback(() => {
-    if (idx > 0) {
-      const prevIdx = Math.max(0, idx - 1);
-      setStep(flow[prevIdx]);
-    } else {
-      nav.goBack();
-    }
-  }, [idx, flow, nav]);
+  }, [isLast, idx, flow, buildConfig, nav, mode, form]);
 
   const handleTimer = useCallback((v: number | 'unlimited') => {
     const next = (v === 'unlimited' ? 'unlimited' : v) as TimerPreset;
@@ -102,7 +119,13 @@ export default function QuizSettingsWizard() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
-      <TopBar titleKey="quiz.settings.title" showBack={step !== 'mode'} onBack={onBack} />
+      {/* === השינוי כאן: כפתור חזור מוצג רק אם אנחנו לא ב-Mode (השלב הראשון) === */}
+      <TopBar 
+        titleKey="quiz.settings.title" 
+        showBack={step !== 'mode'} 
+        onBack={onBack} 
+      />
+      
       <FadeSwap id={step} style={styles.body}>
         {step === 'mode' && <StepMode value={mode as Mode | null} onChange={setMode} />}
         {step === 'form' && <StepForm value={form as QuestionForm} onChange={setForm} />}

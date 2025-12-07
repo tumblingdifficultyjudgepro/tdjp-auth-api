@@ -9,6 +9,7 @@ const he = {
     settings: 'הגדרות',
   },
 
+<<<<<<< HEAD
   home: {
     greeting: 'ברוכה הבאה',
     dailyQuoteTitle: 'הציטוט היומי',
@@ -28,6 +29,19 @@ const he = {
     login: 'התחברות',
     register: 'הרשמה',
     logout: 'התנתקות'
+=======
+  settings: {
+    tariffLocation: {
+      title: 'מיקום קבצי טריף',
+      choose: 'בחירת מיקום',
+      change: 'שינוי מיקום',
+      currentPrefix: 'מיקום נוכחי:',
+      notSet: 'לא נבחר עדיין',
+    },
+    tariffAllowIllegalExport: {
+      title: 'אפשר ייצוא טריף לפסים לא חוקיים',
+    },
+>>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   },
 
   screens: {
@@ -194,6 +208,7 @@ const he = {
 
     messages: {
       selectPassFirst: 'צריך לבחור פס קודם',
+      passesIllegal: 'הפסים אינם חוקיים',
     },
 
     actions: {
@@ -207,11 +222,60 @@ const he = {
       close: 'סגור',
       share: 'שתף',
     },
+
+    confirmIllegalExport: {
+      title: 'הפסים אינם חוקיים',
+      message: 'שים לב, הפסים אינם חוקיים. האם ברצונך לייצא ל-PDF בכל זאת?',
+      yes: 'כן',
+      no: 'לא',
+    },
   },
 
   common: {
     close: 'סגור',
   },
+
+  errors: {
+    intraRepeat: "חזרה על אלמנט בתוך הפס",
+    maxBackFull: "מותר עד 3 ברגים אחורה בפס",
+    crossRepeat: "חזרה על אלמנט בין פס 1 לפס 2",
+    doubleBackFullFinish: "רק אחד מהפסים יכול להסתיים ב\"בורג אחורה\"",
+    flickToForward: "פליק פלאק לאלמנט קדימה",
+    tempoToForward: "טמפו לאלמנט קדימה",
+    directionChange: "שינוי כיוון תנועה באמצע פס",
+    cannotExport: "לא ניתן לייצא PDF בזמן שיש שגיאות",
+  },
+
+  dialogs: {
+    exitApp: {
+      title: 'יציאה מהאפליקציה',
+      message: 'האם את/ה בטוח/ה שברצונך לצאת?',
+      exit: 'צא',
+      stay: 'הישאר',
+    },
+  },
+
+ feedback: {
+    btnLabel: 'הצע רעיון / דווח על באג',
+    title: 'שליחת פידבק',
+    typeIdea: 'רעיון לשיפור',
+    typeBug: 'באג לתיקון',
+    name: 'שם מלא',
+    subject: 'נושא',
+    message: 'תוכן ההודעה',
+    attach: 'צרף תמונה',
+    send: 'שלח',
+    cancel: 'ביטול',
+    maxImages: 'מקסימום 3 תמונות',
+    noPermission: 'אין הרשאת גישה לגלריה',
+    errorTitle: 'שגיאה',
+    sendError: 'שגיאה בשליחה',
+    successIdeaTitle: 'תודה על הרעיון!',
+    successIdeaBody: 'נשקול ליישם אותו.',
+    successBugTitle: 'תודה על הדיווח!',
+    successBugBody: 'ננסה לטפל בזה בהקדם.',
+    close: 'סגור',
+},
 } as const;
 
 export default he;

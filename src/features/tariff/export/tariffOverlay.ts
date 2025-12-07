@@ -88,7 +88,6 @@ function sumNumbers(values: (number | string | null | undefined)[]): number {
   return total;
 }
 
-// תמיד להציג ניקוד בפורמט 0.0
 function formatScore(v: number | string | null | undefined): string {
   if (v === null || v === undefined || v === '') return '';
   if (typeof v === 'number') {
@@ -133,16 +132,24 @@ function normalizeTrackKey(
   if (s === 'international') return 'international';
 
   if (s.includes('ליגה')) return 'league';
-  if (s.startsWith('לאומ')) return 'national';
-  if (s.startsWith('בינלאומ')) return 'international';
+  if (s.startsWith('לאומי')) return 'national';
+  if (s.startsWith('בינלאומי')) return 'international';
 
   return null;
+}
+
+function isPassEmpty(pass: TariffPassRowData): boolean {
+  const hasSymbol = pass.symbols.some(v => v != null && v !== '');
+  const hasValue = pass.values.some(v => v != null && v !== '');
+  const hasBonus = pass.bonuses.some(v => v != null && v !== '');
+  return !hasSymbol && !hasValue && !hasBonus;
 }
 
 function buildPassOverlay(
   pass: TariffPassRowData,
   layout: TariffLayoutForLang['passes'][1],
   baseDir: 'ltr' | 'rtl',
+  hideTotals: boolean,
 ): string {
   const parts: string[] = [];
 
@@ -168,17 +175,19 @@ function buildPassOverlay(
     }
   }
 
-  const ddTotal = sumNumbers(pass.values);
-  const bonusTotal = sumNumbers(pass.bonuses);
-  const withBonusTotal = ddTotal + bonusTotal;
+  if (!hideTotals) {
+    const ddTotal = sumNumbers(pass.values);
+    const bonusTotal = sumNumbers(pass.bonuses);
+    const withBonusTotal = ddTotal + bonusTotal;
 
-  const ddText = formatScore(ddTotal);
-  const bonusText = formatScore(bonusTotal);
-  const withBonusText = formatScore(withBonusTotal);
+    const ddText = formatScore(ddTotal);
+    const bonusText = formatScore(bonusTotal);
+    const withBonusText = formatScore(withBonusTotal);
 
-  parts.push(place(ddText, layout.totals.dd, baseDir));
-  parts.push(place(bonusText, layout.totals.bonus, baseDir));
-  parts.push(place(withBonusText, layout.totals.withBonus, baseDir));
+    parts.push(place(ddText, layout.totals.dd, baseDir));
+    parts.push(place(bonusText, layout.totals.bonus, baseDir));
+    parts.push(place(withBonusText, layout.totals.withBonus, baseDir));
+  }
 
   return parts.join('');
 }
@@ -212,8 +221,10 @@ export function buildTariffOverlayHtml(data: TariffExportData): string {
   parts.push(place(data.form.athleteNo, layout.fields.athleteNo, baseDir));
   parts.push(place(data.form.rotation, layout.fields.rotation, baseDir));
 
-  parts.push(buildPassOverlay(data.pass1, layout.passes[1], baseDir));
-  parts.push(buildPassOverlay(data.pass2, layout.passes[2], baseDir));
+  const hideTotals = isPassEmpty(data.pass1) && isPassEmpty(data.pass2);
+
+  parts.push(buildPassOverlay(data.pass1, layout.passes[1], baseDir, hideTotals));
+  parts.push(buildPassOverlay(data.pass2, layout.passes[2], baseDir, hideTotals));
 
   return `<div class="tariff-overlay" style="position:absolute; inset:0; z-index:5; pointer-events:none;">
     ${parts.join('\n')}

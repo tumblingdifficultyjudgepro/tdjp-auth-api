@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Animated, Easing } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Platform, Animated, Easing, BackHandler } from 'react-native'; // הוספתי BackHandler
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native'; // הוספתי useFocusEffect
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
 import he from '@/shared/i18n/he';
@@ -42,6 +42,20 @@ export default function QuizSummary() {
   const dict = getDict(lang);
   const actions = getActions(lang);
   const common = getCommon(lang);
+
+  // === לוגיקת חזרה לעמוד הראשון של המבחן (QuizWizard) ===
+  useFocusEffect(
+    React.useCallback(() => {
+      const onBackPress = () => {
+        nav.navigate('QuizWizard');
+        return true; // חוסם יציאה רגילה
+      };
+
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+      return () => subscription.remove();
+    }, [nav])
+  );
+  // ========================================================
 
   const headerText = lang === 'he' ? 'המבחן הושלם בהצלחה !' : 'Test completed successfully!';
   const correctLabelText = lang === 'he' ? 'התשובה הנכונה:' : 'Correct answer:';

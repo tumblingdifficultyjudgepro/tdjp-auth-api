@@ -9,6 +9,7 @@ const en = {
     settings: 'Settings',
   },
 
+<<<<<<< HEAD
   home: {
     greeting: 'Welcome Back',
     dailyQuoteTitle: 'Daily Quote',
@@ -28,6 +29,19 @@ const en = {
     login: 'Login',
     register: 'Register',
     logout: 'Logout'
+=======
+  settings: {
+    tariffLocation: {
+      title: 'Tariff files location',
+      choose: 'Choose location',
+      change: 'Change location',
+      currentPrefix: 'Current location:',
+      notSet: 'Not selected yet',
+    },
+    tariffAllowIllegalExport: {
+      title: 'Allow tariff export for illegal passes',
+    },
+>>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   },
 
   screens: {
@@ -194,6 +208,7 @@ const en = {
 
     messages: {
       selectPassFirst: 'You need to select a pass first',
+      passesIllegal: 'Passes are not legal',
     },
 
     actions: {
@@ -207,9 +222,58 @@ const en = {
       close: 'Close',
       share: 'Share',
     },
+
+    confirmIllegalExport: {
+      title: 'Passes are not legal',
+      message: 'Passes are not legal. Do you want to export to PDF anyway?',
+      yes: 'Yes',
+      no: 'No',
+    },
   },
 
   common: {
+    close: 'Close',
+  },
+
+  errors: {
+    intraRepeat: 'Element repeated in pass',
+    maxBackFull: 'Max 3 back fulls per pass',
+    crossRepeat: 'Element repeated across passes',
+    doubleBackFullFinish: 'Only one pass may end with a Back Full',
+    flickToForward: 'Back handspring into a forward element',
+    tempoToForward: 'Whip/Tempo into a forward element',
+    directionChange: 'Change of direction in middle of pass',
+    cannotExport: 'Cannot export PDF while errors exist',
+  },
+
+  dialogs: {
+    exitApp: {
+      title: 'Exit App',
+      message: 'Are you sure you want to exit?',
+      exit: 'Exit',
+      stay: 'Stay',
+    },
+  },
+
+feedback: {
+    btnLabel: 'Suggest Idea / Report Bug',
+    title: 'Send Feedback',
+    typeIdea: 'Feature Idea',
+    typeBug: 'Bug Report',
+    name: 'Full Name',
+    subject: 'Subject',
+    message: 'Message',
+    attach: 'Attach Image',
+    send: 'Send',
+    cancel: 'Cancel',
+    maxImages: 'Max 3 images',
+    noPermission: 'Gallery permission denied',
+    errorTitle: 'Error',
+    sendError: 'Send failed',
+    successIdeaTitle: 'Thanks for the idea!',
+    successIdeaBody: 'We will consider it.',
+    successBugTitle: 'Thanks for the report!',
+    successBugBody: 'We will fix it soon.',
     close: 'Close',
   },
 } as const;

@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
   },
   centerBtnPressed: { opacity: 0.7 },
   pressedUp: { transform: [{ translateY: -1 }] },
-  homeIconWrap: { transform: [{ translateY: 2 }] },
+  homeIconWrap: { transform: [{ translateY: 5 }] },
   regularBtn: { justifyContent: 'center', alignItems: 'center' },
   regularBtnPressed: { opacity: 0.6 }
 });

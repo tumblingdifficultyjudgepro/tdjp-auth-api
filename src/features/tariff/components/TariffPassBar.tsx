@@ -1,128 +1,154 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, LayoutChangeEvent } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { useAppTheme } from '@/shared/theme/theme';
-import AutoShrinkText from '../text/TariffAutoShrinkText';
-
-type SlotItem = { id: string; label: string; value: number };
+import { useLang } from '@/shared/state/lang';
+import { t } from '@/shared/i18n';
 
 type Props = {
-  items: SlotItem[];
-  direction: 'ltr' | 'rtl';
-  maxSlots: number;
+  visible: boolean;
+  onHide: () => void;
 };
 
-const H_LABEL = 56;
-const H_VALUE = 28;
-const COLOR_VALUE = '#FFC107';
-const SLOT_HPAD = 4;
-
-export default function TariffPassBar({ items, direction, maxSlots }: Props) {
+export default function TariffIllegalToast({ visible, onHide }: Props) {
   const { colors } = useAppTheme();
+  const { lang } = useLang();
 
-  const layoutRTL = direction === 'rtl';
+  const opacity = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(0.9)).current;
+  const isAnimatingOut = useRef(false);
 
-  const slots = useMemo(() => {
-    const out: Array<SlotItem | null> = new Array(maxSlots).fill(null);
-    const k = Math.min(items.length, maxSlots);
-    if (layoutRTL) {
-      for (let i = 0; i < k; i++) out[maxSlots - 1 - i] = items[i];
-    } else {
-      for (let i = 0; i < k; i++) out[i] = items[i];
-    }
-    return out;
-  }, [items, layoutRTL, maxSlots]);
+  useEffect(() => {
+    if (!visible) return;
 
-  const writing = layoutRTL ? 'rtl' : 'ltr';
-  const CENTER = { textAlign: 'center' as const };
+    isAnimatingOut.current = false;
+    opacity.setValue(0);
+    scale.setValue(0.9);
 
-  const [slotWidths, setSlotWidths] = useState<number[]>([]);
-  const onSlotLayout = (idx: number) => (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width;
-    setSlotWidths((prev) => {
-      const next = prev.slice();
-      next[idx] = w;
-      return next;
-    });
-  };
+    Animated.parallel([
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+      Animated.timing(scale, {
+        toValue: 1,
+        duration: 220,
+        easing: Easing.out(Easing.quad),
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-  const maxFontText = 18;
-  const textMinFont = 10;
+    const timeoutId = setTimeout(() => {
+      if (isAnimatingOut.current) return;
+      isAnimatingOut.current = true;
+      Animated.parallel([
+        Animated.timing(opacity, {
+          toValue: 0,
+          duration: 220,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 0.9,
+          duration: 220,
+          easing: Easing.in(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]).start(({ finished }) => {
+        if (finished) onHide();
+      });
+    }, 3000);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [visible, opacity, scale, onHide]);
+
+  if (!visible) return null;
 
   return (
-    <View style={styles.outer}>
-      <View style={styles.row}>
-        {slots.map((x, idx) => (
-          <View
-            key={`label_slot_${idx}`}
-            style={[styles.slot, { height: H_LABEL, borderColor: colors.border }]}
-            onLayout={onSlotLayout(idx)}
-          >
-            {x ? (
-              <AutoShrinkText
-                text={x.label}
-                maxFont={maxFontText}
-                minFont={textMinFont}
-                maxLines={3}
-                lineHeightRatio={1.1}
-                maxWidth={slotWidths[idx] || undefined}
-                horizontalPadding={SLOT_HPAD}
-                style={{
-                  ...CENTER,
-                  fontWeight: '900',
-                  color: colors.text,
-                  writingDirection: writing,
-                }}
-              />
-            ) : (
-              <Text
-                style={{
-                  ...CENTER,
-                  fontSize: 18,
-                  fontWeight: '900',
-                  color: colors.text,
-                  writingDirection: writing,
-                }}
-              >
-                —
-              </Text>
-            )}
-          </View>
-        ))}
-      </View>
-
-      <View style={[styles.row, { marginTop: 6 }]}>
-        {slots.map((x, idx) => (
-          <View
-            key={`value_slot_${idx}`}
-            style={[
-              styles.slot,
-              styles.valueSlot,
-              { height: H_VALUE, borderColor: colors.border },
-            ]}
-          >
-            <Text numberOfLines={1} style={styles.valueText}>
-              {x ? x.value.toFixed(1) : '—'}
-            </Text>
-          </View>
-        ))}
-      </View>
+    <View style={styles.overlay} pointerEvents="auto">
+      <Animated.View
+        style={[
+          styles.backdrop,
+          {
+            opacity,
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.toastBox,
+          {
+            backgroundColor: colors.card,
+            borderColor: colors.border,
+            opacity,
+            transform: [{ scale }],
+          },
+        ]}
+      >
+        <View style={styles.iconCircle}>
+          <Text style={styles.iconText}>!</Text>
+        </View>
+        <Text
+          style={[
+            styles.toastText,
+            {
+              color: colors.text,
+              textAlign: lang === 'he' ? 'right' : 'left',
+            },
+          ]}
+        >
+          {t(lang, 'tariff.messages.passesIllegal')}
+        </Text>
+      </Animated.View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: { marginTop: 8, paddingHorizontal: 2 },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  slot: {
-    flex: 1,
-    marginHorizontal: 2,
-    borderRadius: 10,
+  overlay: {
+    position: 'absolute',
+    inset: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  backdrop: {
+    position: 'absolute',
+    inset: 0,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+  },
+  toastBox: {
+    minWidth: 280,
+    maxWidth: '85%',
+    borderRadius: 20,
     borderWidth: 1.5,
-    backgroundColor: 'transparent',
+    paddingHorizontal: 24,
+    paddingVertical: 22,
+    alignItems: 'center',
+    shadowColor: '#000000',
+    shadowOpacity: 0.28,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
+  },
+  iconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: '#c0392b',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: SLOT_HPAD,
+    marginBottom: 12,
   },
-  valueSlot: { borderRadius: 8 },
-  valueText: { fontSize: 13, fontWeight: '800', color: COLOR_VALUE, textAlign: 'center' },
+  iconText: {
+    color: '#FFFFFF',
+    fontSize: 30,
+    fontWeight: '900',
+  },
+  toastText: {
+    fontSize: 18,
+    fontWeight: '600',
+  },
 });
