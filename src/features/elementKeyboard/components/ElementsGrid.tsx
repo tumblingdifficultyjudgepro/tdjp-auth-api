@@ -12,6 +12,7 @@ type Props = {
   isSymbolMode?: boolean;
   symbolFontSize?: number;
   extraBottomPadding?: number;
+  onScroll?: (y: number) => void;
 };
 
 export type ElementsGridHandle = {
@@ -28,6 +29,7 @@ function ElementsGridInner(
     isSymbolMode,
     symbolFontSize,
     extraBottomPadding,
+    onScroll,
   }: Props,
   ref: React.Ref<ElementsGridHandle>,
 ) {
@@ -58,6 +60,8 @@ function ElementsGridInner(
   return (
     <FlatList
       ref={listRef}
+      onScroll={(e) => onScroll?.(e.nativeEvent.contentOffset.y)}
+      scrollEventThrottle={16}
       data={elements}
       keyExtractor={(item, index) => `${item.id}_${index}`}
       numColumns={numColumns}

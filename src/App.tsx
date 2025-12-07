@@ -6,6 +6,8 @@ import { AppThemeProvider, useAppTheme } from '@/shared/theme/theme';
 import { LangProvider, useLang } from '@/shared/state/lang';
 import Tabs from '@/app/navigation/Tabs';
 
+import { AuthProvider } from '@/shared/state/auth';
+
 function WithNav() {
   const { colors } = useAppTheme();
   const { lang } = useLang();
@@ -37,7 +39,9 @@ export default function App() {
       <SafeAreaProvider>
         <AppThemeProvider defaultMode="light">
           <LangProvider defaultLang="he">
-            <WithNav />
+            <AuthProvider>
+              <WithNav />
+            </AuthProvider>
           </LangProvider>
         </AppThemeProvider>
       </SafeAreaProvider>

@@ -1,29 +1,31 @@
-import React, { useMemo, useState, useEffect } from 'react'
-import { View, Text, StyleSheet, LayoutChangeEvent, Pressable } from 'react-native'
-import { useAppTheme } from '@/shared/theme/theme'
-import AutoShrinkTextTariff from '@/features/tariff/text/TariffAutoShrinkText'
+import React, { useMemo, useState, useEffect } from 'react';
+import { View, Text, StyleSheet, LayoutChangeEvent, Pressable } from 'react-native';
+import { useAppTheme } from '@/shared/theme/theme';
+import TariffSlotRow from './TariffSlotRow';
 
-type DisplaySlot = { id: string; label: string; value: number }
+type DisplaySlot = { id: string; label: string; value: number };
 
 type Props = {
-  label: string
-  items: DisplaySlot[]
-  maxSlots: number
-  direction: 'ltr' | 'rtl'
-  isActive: boolean
-  onPress: () => void
-  isSymbolMode: boolean
-  symbolFontSize?: number
-  showBonusRow?: boolean
-}
+  label: string;
+  items: DisplaySlot[];
+  maxSlots: number;
+  direction: 'ltr' | 'rtl';
+  isActive: boolean;
+  onPress: () => void;
+  isSymbolMode: boolean;
+  symbolFontSize?: number;
+  showBonusRow?: boolean;
+  onLayout?: (event: LayoutChangeEvent) => void;
+  onSlotWidthsChange?: (widths: number[]) => void;
+};
 
-const H_LABEL = 56
-const H_VALUE = 28
-const H_BONUS = 24
-const COLOR_VALUE = '#FFC107'
-const COLOR_VALUE_BG = '#FFF8E1'
-const COLOR_BONUS_BG = '#B3E5FC'
-const SLOT_HPAD = 4
+const H_LABEL = 56;
+const H_VALUE = 28;
+const H_BONUS = 24;
+const COLOR_VALUE = '#FFC107';
+const COLOR_VALUE_BG = '#FFF8E1';
+const COLOR_BONUS_BG = '#B3E5FC';
+const SLOT_HPAD = 4;
 
 export default function TariffPassRow({
   label,
@@ -35,53 +37,30 @@ export default function TariffPassRow({
   isSymbolMode,
   symbolFontSize,
   showBonusRow = false,
+  onLayout,
+  onSlotWidthsChange,
 }: Props) {
-  const { colors } = useAppTheme()
+  const { colors } = useAppTheme();
 
-  const layoutRTL = direction === 'rtl'
-  const writing = layoutRTL ? 'rtl' : 'ltr'
-  const CENTER = { textAlign: 'center' as const }
+  const layoutRTL = direction === 'rtl';
 
-  const ordered = useMemo(() => items, [items])
+  const ordered = useMemo(() => items, [items]);
 
   const slots = useMemo(() => {
-    const out: Array<DisplaySlot | null> = new Array(maxSlots).fill(null)
-    const k = Math.min(ordered.length, maxSlots)
+    const out: Array<DisplaySlot | null> = new Array(maxSlots).fill(null);
+    const k = Math.min(ordered.length, maxSlots);
     if (layoutRTL) {
-      for (let i = 0; i < k; i++) out[maxSlots - 1 - i] = ordered[i]
+      for (let i = 0; i < k; i++) out[maxSlots - 1 - i] = ordered[i];
     } else {
-      for (let i = 0; i < k; i++) out[i] = ordered[i]
+      for (let i = 0; i < k; i++) out[i] = ordered[i];
     }
-    return out
-  }, [ordered, layoutRTL, maxSlots])
-
-  const [slotWidths, setSlotWidths] = useState<number[]>(() =>
-    Array(maxSlots).fill(0)
-  )
-
-  useEffect(() => {
-    setSlotWidths(Array(maxSlots).fill(0))
-  }, [maxSlots])
-
-  const onSlotLayout = (idx: number) => (e: LayoutChangeEvent) => {
-    const w = e.nativeEvent.layout.width
-    setSlotWidths(prev => {
-      if (prev[idx] === w) return prev
-      const next = [...prev]
-      next[idx] = w
-      return next
-    })
-  }
-
-  const maxFontText = 18
-  const minFontText = 5
-  const effectiveSymbolFont = symbolFontSize ?? 18
-  const symbolLine = Math.round(effectiveSymbolFont * 1.1)
-  const symbolMaxH = symbolLine * 3
+    return out;
+  }, [ordered, layoutRTL, maxSlots]);
 
   return (
     <Pressable
       onPress={onPress}
+      onLayout={onLayout}
       style={({ pressed }) => [
         styles.container,
         {
@@ -106,70 +85,16 @@ export default function TariffPassRow({
       </View>
 
       <View style={styles.slotsOuter}>
-        <View style={styles.row}>
-          {slots.map((x, idx) => (
-            <View
-              key={`label_slot_${idx}`}
-              style={[
-                styles.slot,
-                {
-                  height: H_LABEL,
-                  borderColor: colors.border,
-                  backgroundColor: colors.card,
-                },
-              ]}
-              onLayout={onSlotLayout(idx)}
-            >
-              {x ? (
-                isSymbolMode ? (
-                  <Text
-                    numberOfLines={3}
-                    allowFontScaling={false}
-                    style={{
-                      ...CENTER,
-                      fontSize: effectiveSymbolFont,
-                      lineHeight: symbolLine,
-                      maxHeight: symbolMaxH,
-                      fontWeight: '900',
-                      color: colors.text,
-                      writingDirection: 'ltr',
-                    }}
-                  >
-                    {x.label}
-                  </Text>
-                ) : (
-                  <AutoShrinkTextTariff
-                    text={x.label}
-                    maxFont={maxFontText}
-                    minFont={minFontText}
-                    maxLines={3}
-                    lineHeightRatio={1.1}
-                    maxWidth={slotWidths[idx] || undefined}
-                    horizontalPadding={SLOT_HPAD}
-                    style={{
-                      ...CENTER,
-                      fontWeight: '900',
-                      color: colors.text,
-                      writingDirection: writing,
-                    }}
-                  />
-                )
-              ) : (
-                <Text
-                  style={{
-                    ...CENTER,
-                    fontSize: 18,
-                    fontWeight: '900',
-                    color: colors.text,
-                    writingDirection: writing,
-                  }}
-                >
-                  —
-                </Text>
-              )}
-            </View>
-          ))}
-        </View>
+        <TariffSlotRow
+          items={items}
+          maxSlots={maxSlots}
+          direction={direction}
+          isSymbolMode={isSymbolMode}
+          symbolFontSize={symbolFontSize}
+          slotHPadding={SLOT_HPAD}
+          height={H_LABEL}
+          onWidthsChange={onSlotWidthsChange}
+        />
 
         <View style={[styles.row, { marginTop: 6 }]}>
           {slots.map((x, idx) => (
@@ -209,7 +134,7 @@ export default function TariffPassRow({
               >
                 <Text
                   style={{
-                    ...CENTER,
+                    textAlign: 'center',
                     fontSize: 14,
                     fontWeight: '800',
                     color: '#01579B',
@@ -223,7 +148,7 @@ export default function TariffPassRow({
         )}
       </View>
     </Pressable>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
@@ -272,4 +197,4 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     borderWidth: 0,
   },
-})
+});

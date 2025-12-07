@@ -9,6 +9,27 @@ const en = {
     settings: 'Settings',
   },
 
+  home: {
+    greeting: 'Welcome Back',
+    dailyQuoteTitle: 'Daily Quote',
+    guestTitle: 'Welcome to TDJP',
+    guestSubtitle: 'Your personal gymnastics judging companion',
+    loginAction: 'Login / Register',
+    elementOfTheDay: 'Element of the Day',
+    quickActions: {
+      quiz: 'Quick Quiz',
+      calc: 'Calculator',
+      stats: 'My Stats',
+      rules: 'Rulebook'
+    }
+  },
+
+  auth: {
+    login: 'Login',
+    register: 'Register',
+    logout: 'Logout'
+  },
+
   screens: {
     home: 'Home',
     calculator: 'Calculator',
@@ -114,19 +135,19 @@ const en = {
   },
 
   summary: {
-    title: 'סיכום מבחן',
-    score: 'ציון',
-    correct: 'תשובות נכונות',
-    wrong: 'תשובות שגויות',
-    total: 'סך הכול שאלות',
-    avgTime: 'זמן ממוצע לשאלה',
-    restart: 'התחל מבחן חדש',
-    header: 'המבחן הושלם בהצלחה !',
-    correctLabel: 'התשובה הנכונה:',
-    wrongLabel: 'תשובה שגויה:',
-    unanswered: 'לא נענתה תשובה',
-    practiceAgain: 'תרגל שוב',
-    close: 'סגור',
+    title: 'Quiz Summary',
+    score: 'Score',
+    correct: 'Correct Answers',
+    wrong: 'Wrong Answers',
+    total: 'Total Questions',
+    avgTime: 'Average Time / Question',
+    restart: 'Start New Quiz',
+    header: 'Quiz Completed Successfully!',
+    correctLabel: 'Correct Answer:',
+    wrongLabel: 'Wrong Answer:',
+    unanswered: 'No Answer Provided',
+    practiceAgain: 'Practice Again',
+    close: 'Close',
   },
 
   tariff: {

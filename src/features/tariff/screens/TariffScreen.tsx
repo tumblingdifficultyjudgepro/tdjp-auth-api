@@ -19,6 +19,7 @@ import { exportTariffPdf } from '@/features/tariff/export/exportTariffPdf';
 import { TariffExportData, TariffPassRowData } from '@/features/tariff/export/tariffOverlay';
 import { TariffLang } from '@/features/tariff/background/tariffBackground';
 import { getElementById } from '@/shared/data/elements';
+import TariffSlotRow from '@/features/tariff/components/TariffSlotRow';
 
 type ElementsGridHandle = {
   scrollToTop: () => void;
@@ -50,15 +51,15 @@ function mapPassDisplayToExport(items: DisplayItem[]): TariffPassRowData {
       (typeof item.symbol === 'string' && item.symbol.trim() !== ''
         ? item.symbol
         : typeof item.label === 'string'
-        ? item.label
-        : '');
+          ? item.label
+          : '');
 
     const value =
       typeof item.value === 'number' || typeof item.value === 'string'
         ? item.value
         : typeof item.dd === 'number' || typeof item.dd === 'string'
-        ? item.dd
-        : null;
+          ? item.dd
+          : null;
 
     const bonus =
       typeof item.bonus === 'number' || typeof item.bonus === 'string'
@@ -196,13 +197,51 @@ export default function TariffScreen() {
     }
   };
 
+  // Sticky Header Logic
+  const [scrollY, setScrollY] = useState(0);
+  const [passLayouts, setPassLayouts] = useState<{ [key: number]: number }>({});
+  // Track slot widths to prevent resize flashing on sticky mount
+  const [passSlotWidths, setPassSlotWidths] = useState<{ [key: number]: number[] }>({});
+
+  // Assuming 'Passes Section' starts after Athlete Form.
+  // We need absolute Y of the pass row. 
+  // Since we rely on onLayout of TariffPassRow inside the Header, 
+  // we also need to know the offset of the "Passes Section" or just accumulate Ys.
+  // But simpler: The ListHeaderComponent is one block. 
+  // Let's assume a rough structure or tracking.
+  // Actually, nativeEvent.layout.y inside ListHeaderComponent is distinct from List offset.
+  // We need the Y position relative to the SCROLL CONTENT.
+  // The Header IS at y=0 of scroll content.
+  // So: PassRow.y + PassesSection.y + HeaderWrapper.paddingTop etc.
+
+  // Let's track the "PassesSection" Y offset too
+  const [passesSectionY, setPassesSectionY] = useState(0);
+
+  const activePassY = activePass && passLayouts[activePass] !== undefined
+    ? passLayouts[activePass] + passesSectionY
+    : 99999;
+
+  // We want to stick when scrollY > activePassY.
+  // BUT: The "Element Row" is inside the Pass Row. 
+  // The Pass Row starts with a Label (Text).
+  // The Element Row starts slightly below that.
+  // Let's add a small offset (~20px for label row).
+  const stickyTriggerY = activePassY + 20;
+  const isSticky = activePass !== null && scrollY > stickyTriggerY;
+
   const header = (
     <View style={styles.headerWrapper}>
       <View style={styles.formWrapper}>
         <AthleteDetailsSection value={athlete} onChange={setAthlete} />
       </View>
 
-      <View style={styles.passesSection}>
+      <View
+        style={styles.passesSection}
+        onLayout={(e) => {
+          const y = e.nativeEvent.layout.y + 12;
+          setPassesSectionY(y);
+        }}
+      >
         <TariffPassRow
           label={t(lang, 'tariff.passes.pass1')}
           items={pass1Display}
@@ -213,6 +252,10 @@ export default function TariffScreen() {
           isSymbolMode={elementMode === 'symbol'}
           symbolFontSize={symbolFontSize}
           showBonusRow={athlete.autoBonus}
+          onLayout={(e) => {
+            const y = e.nativeEvent.layout.y;
+            setPassLayouts(prev => ({ ...prev, 1: y }));
+          }}
         />
         <TariffPassRow
           label={t(lang, 'tariff.passes.pass2')}
@@ -224,6 +267,10 @@ export default function TariffScreen() {
           isSymbolMode={elementMode === 'symbol'}
           symbolFontSize={symbolFontSize}
           showBonusRow={athlete.autoBonus}
+          onLayout={(e) => {
+            const y = e.nativeEvent.layout.y;
+            setPassLayouts(prev => ({ ...prev, 2: y }));
+          }}
         />
       </View>
 
@@ -253,7 +300,7 @@ export default function TariffScreen() {
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
-      <View style={[styles.topBarWrapper, { borderBottomColor: colors.border }]}>
+      <View style={[styles.topBarWrapper, { borderBottomColor: colors.border, zIndex: 10 }]}>
         <TopBar
           titleKey="tabs.tariff"
           showBack={false}
@@ -276,7 +323,33 @@ export default function TariffScreen() {
           isSymbolMode={elementMode === 'symbol'}
           symbolFontSize={symbolFontSize}
           extraBottomPadding={80}
+          onScroll={(y) => setScrollY(y)}
         />
+
+        {/* Sticky Header Overlay */}
+        {isSticky && activePass && (
+          <View style={styles.stickyHeaderContainer}>
+            <View style={[
+              styles.stickyBubble,
+              {
+                backgroundColor: colors.card,
+                borderColor: '#FFC107',
+                shadowColor: '#000'
+              }
+            ]}>
+              <TariffSlotRow
+                items={activePass === 1 ? pass1Display : pass2Display}
+                maxSlots={maxSlots}
+                direction={barDirection}
+                isSymbolMode={elementMode === 'symbol'}
+                symbolFontSize={symbolFontSize}
+                slotHPadding={4}
+                height={56}
+                initialWidths={passSlotWidths[activePass]}
+              />
+            </View>
+          </View>
+        )}
       </View>
 
       <TariffStickyActions
@@ -324,5 +397,22 @@ const styles = StyleSheet.create({
   },
   keyboardHeader: {
     marginTop: 12,
+  },
+  stickyHeaderContainer: {
+    position: 'absolute',
+    top: 4,
+    left: 8,
+    right: 8,
+    zIndex: 100,
+  },
+  stickyBubble: {
+    borderRadius: 12,
+    borderWidth: 1.5,
+    paddingHorizontal: 8,
+    paddingVertical: 8,
+    elevation: 6,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
   },
 });

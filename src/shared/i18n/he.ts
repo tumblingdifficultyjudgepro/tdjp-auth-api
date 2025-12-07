@@ -9,6 +9,27 @@ const he = {
     settings: 'הגדרות',
   },
 
+  home: {
+    greeting: 'ברוכה הבאה',
+    dailyQuoteTitle: 'הציטוט היומי',
+    guestTitle: 'ברוכים הבאים ל-TDJP',
+    guestSubtitle: 'העוזר האישי שלך לשיפוט התעמלות',
+    loginAction: 'התחברות / הרשמה',
+    elementOfTheDay: 'האלמנט היומי',
+    quickActions: {
+      quiz: 'מבחן מהיר',
+      calc: 'מחשבון',
+      stats: 'הסטטיסטיקה שלי',
+      rules: 'חוקה'
+    }
+  },
+
+  auth: {
+    login: 'התחברות',
+    register: 'הרשמה',
+    logout: 'התנתקות'
+  },
+
   screens: {
     home: 'בית',
     calculator: 'מחשבון',

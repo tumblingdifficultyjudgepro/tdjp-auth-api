@@ -2,12 +2,15 @@ import React from 'react';
 import { Modal, View, Text, Pressable, StyleSheet } from 'react-native';
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
+import { useAuth } from '@/shared/state/auth';
+import { t } from '@/shared/i18n';
 
 type Props = { visible: boolean; onClose: () => void };
 
 export default function SettingsSheet({ visible, onClose }: Props) {
   const { colors, mode, setMode } = useAppTheme();
   const { lang, setLang } = useLang();
+  const { logout, user } = useAuth();
   const isRTL = lang === 'he';
 
   const appearanceOrder = isRTL ? (['light', 'blue', 'dark'] as const) : (['dark', 'blue', 'light'] as const);
@@ -85,6 +88,11 @@ export default function SettingsSheet({ visible, onClose }: Props) {
           <Pressable onPress={onClose} style={styles.closeBtn}>
             <Text style={styles.closeText}>{isRTL ? 'סגור' : 'Close'}</Text>
           </Pressable>
+          {user && (
+            <Pressable onPress={() => { logout(); onClose(); }} style={[styles.closeBtn, { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, marginTop: 10 }]}>
+              <Text style={[styles.closeText, { color: colors.text }]}>{t(lang, 'auth.logout')}</Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </Modal>

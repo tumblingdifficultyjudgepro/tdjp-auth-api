@@ -22,7 +22,7 @@ export default function AutoShrinkTextTariff({
   style,
   ...rest
 }: Props) {
-  const [font, setFont] = useState(maxFont);
+  const [font, setFont] = useState(minFont > 0 ? minFont : 10);
   const lowRef = useRef(minFont);
   const highRef = useRef(maxFont);
   const doneRef = useRef(false);
@@ -33,7 +33,8 @@ export default function AutoShrinkTextTariff({
     highRef.current = maxFont;
     doneRef.current = false;
     safetyRef.current = 0;
-    setFont(maxFont);
+    // Start small to prevent explosive overflow on first render
+    setFont(minFont > 0 ? minFont : 10);
   }, [text, maxFont, minFont, maxLines, lineHeightRatio, maxWidth]);
 
   const limitWidth = useMemo(() => {
@@ -88,8 +89,11 @@ export default function AutoShrinkTextTariff({
     }
 
     const next = Math.floor((lowRef.current + highRef.current + 1) / 2);
-    if (next !== font) setFont(next);
-    else doneRef.current = true;
+    if (next !== font) {
+      setFont(next);
+    } else {
+      doneRef.current = true;
+    }
   };
 
   const line = Math.round(font * lineHeightRatio);

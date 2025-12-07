@@ -18,7 +18,13 @@ export type ElementItem = {
 };
 
 export const ELEMENTS: Element[] = [
-  { id: 'front_handspring', name: { he: 'קפיצת ידיים', en: 'Front Handspring' }, symbol: 'H', value: 0.1, direction: 'forward' },
+  {
+    id: 'front_handspring',
+    name: { he: 'קפיצת ידיים', en: 'Front Handspring' },
+    symbol: 'H',
+    value: 0.1,
+    direction: 'forward'
+  },
   { id: 'front_tuck', name: { he: 'סלטה קדימה בקירוס', en: 'Front Tuck' }, symbol: '.O', value: 0.6, direction: 'forward' },
   { id: 'front_pike', name: { he: 'סלטה קדימה בקיפול', en: 'Front Pike' }, symbol: '.<', value: 0.7, direction: 'forward' },
   { id: 'front_layout', name: { he: 'גוף ישר קדימה', en: 'Front Layout' }, symbol: './', value: 0.7, direction: 'forward' },
@@ -39,7 +45,13 @@ export const ELEMENTS: Element[] = [
   { id: 'double_back_layout', name: { he: 'דאבל גוף ישר', en: 'Double Layout' }, symbol: '--/', value: 2.4, direction: 'backward' },
   { id: 'double_back_straddle', name: { he: 'דאבל בשפגאט', en: 'Double Split' }, symbol: '--Y', value: 2.4, direction: 'backward' },
   { id: 'half_out_layout', name: { he: 'האף אאוט גוף ישר', en: 'Half Out Layout' }, symbol: '-1/', value: 2.6, direction: 'backward' },
-  { id: 'full_in_tuck', name: { he: 'פול אין קירוס', en: 'Full In Tuck' }, symbol: '2-O', value: 2.4, direction: 'backward' },
+  {
+    id: 'full_in_tuck',
+    name: { he: 'פול אין קירוס', en: 'Full In Tuck' },
+    symbol: '2-O',
+    value: 2.4,
+    direction: 'backward'
+  },
   { id: 'full_out_tuck', name: { he: 'פול אאוט קירוס', en: 'Full Out Tuck' }, symbol: '-2O', value: 2.4, direction: 'backward' },
   { id: 'full_in_pike', name: { he: 'פול אין קיפול', en: 'Full In Pike' }, symbol: '2-<', value: 2.6, direction: 'backward' },
   { id: 'full_in_layout', name: { he: 'פול אין גוף ישר', en: 'Full In Layout' }, symbol: '2-/', value: 2.8, direction: 'backward' },
