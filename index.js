@@ -64,7 +64,7 @@ async function sendVerificationEmail(to, code) {
     return;
   }
   await mailer.sendMail({
-    from: 'TDJP <no-reply@tdjp.app>',
+    from: 'TDJP <tumblingdifficultyjudgepro@gmail.com>',
     to,
     subject,
     text,
