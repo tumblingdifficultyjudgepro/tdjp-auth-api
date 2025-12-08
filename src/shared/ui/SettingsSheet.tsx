@@ -4,13 +4,9 @@ import * as FileSystemLegacy from 'expo-file-system/legacy';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
-<<<<<<< HEAD
 import { useAuth } from '@/shared/state/auth';
 import { t } from '@/shared/i18n';
-=======
-import { t } from '@/shared/i18n';
 import FeedbackModal from '@/features/feedback/components/FeedbackModal';
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
 
 type Props = { visible: boolean; onClose: () => void };
 
@@ -31,7 +27,7 @@ function formatDirLabel(dir: string | null): string {
         if (pathPart.length > 0) return `Internal storage/${pathPart}`;
       }
     }
-  } catch {}
+  } catch { }
   if (dir.length <= 60) return dir;
   return dir.slice(0, 30) + '…' + dir.slice(-20);
 }
@@ -44,7 +40,7 @@ export default function SettingsSheet({ visible, onClose }: Props) {
 
   const [tariffDir, setTariffDir] = useState<string | null>(null);
   const [allowIllegalTariffExport, setAllowIllegalTariffExport] = useState(false);
-  
+
   // State עבור חלונית הפידבק
   const [feedbackVisible, setFeedbackVisible] = useState(false);
 
@@ -53,8 +49,8 @@ export default function SettingsSheet({ visible, onClose }: Props) {
 
   useEffect(() => {
     if (!visible) return;
-    AsyncStorage.getItem(TARIFF_DIR_KEY).then(value => setTariffDir(value)).catch(() => {});
-    AsyncStorage.getItem(ALLOW_ILLEGAL_TARIFF_KEY).then(value => setAllowIllegalTariffExport(value === '1')).catch(() => {});
+    AsyncStorage.getItem(TARIFF_DIR_KEY).then(value => setTariffDir(value)).catch(() => { });
+    AsyncStorage.getItem(ALLOW_ILLEGAL_TARIFF_KEY).then(value => setAllowIllegalTariffExport(value === '1')).catch(() => { });
   }, [visible]);
 
   const handlePickTariffDir = async () => {
@@ -68,13 +64,13 @@ export default function SettingsSheet({ visible, onClose }: Props) {
       const dirUri: string = permissions.directoryUri;
       await AsyncStorage.setItem(TARIFF_DIR_KEY, dirUri);
       setTariffDir(dirUri);
-    } catch {}
+    } catch { }
   };
 
   const handleToggleAllowIllegalTariffExport = async () => {
     const next = !allowIllegalTariffExport;
     setAllowIllegalTariffExport(next);
-    try { await AsyncStorage.setItem(ALLOW_ILLEGAL_TARIFF_KEY, next ? '1' : '0'); } catch {}
+    try { await AsyncStorage.setItem(ALLOW_ILLEGAL_TARIFF_KEY, next ? '1' : '0'); } catch { }
   };
 
   const hasDir = !!tariffDir;
@@ -147,24 +143,24 @@ export default function SettingsSheet({ visible, onClose }: Props) {
 
           {/* --- כפתור פידבק (מעוצב מחדש) --- */}
           <View style={{ marginTop: 24, paddingHorizontal: 4, alignItems: 'center' }}>
-             <Pressable 
-                onPress={() => setFeedbackVisible(true)}
-                style={({ pressed }) => [
-                    styles.feedbackButton,
-                    { 
-                        borderColor: colors.border,
-                        backgroundColor: pressed ? 'rgba(128,128,128,0.1)' : 'transparent' // אפקט לחיצה עדין
-                    }
-                ]}
-             >
-                <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                    <Text style={[styles.feedbackText, { color: colors.text }]}>
-                       {t(lang, 'feedback.btnLabel')}
-                    </Text>
-                    {/* אייקון נורה */}
-                    <Text style={{ fontSize: 18 }}>💡</Text>
-                </View>
-             </Pressable>
+            <Pressable
+              onPress={() => setFeedbackVisible(true)}
+              style={({ pressed }) => [
+                styles.feedbackButton,
+                {
+                  borderColor: colors.border,
+                  backgroundColor: pressed ? 'rgba(128,128,128,0.1)' : 'transparent' // אפקט לחיצה עדין
+                }
+              ]}
+            >
+              <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                <Text style={[styles.feedbackText, { color: colors.text }]}>
+                  {t(lang, 'feedback.btnLabel')}
+                </Text>
+                {/* אייקון נורה */}
+                <Text style={{ fontSize: 18 }}>💡</Text>
+              </View>
+            </Pressable>
           </View>
 
           {/* כפתור סגירה */}
@@ -172,28 +168,19 @@ export default function SettingsSheet({ visible, onClose }: Props) {
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>{isRTL ? 'סגור' : 'Close'}</Text>
             </Pressable>
+
+            {user && (
+              <Pressable onPress={() => { logout(); onClose(); }} style={[styles.closeBtn, { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, marginTop: 10 }]}>
+                <Text style={[styles.closeText, { color: colors.text }]}>{t(lang, 'auth.logout')}</Text>
+              </Pressable>
+            )}
           </View>
         </View>
       </Modal>
 
-<<<<<<< HEAD
-        <View style={styles.actions}>
-          <Pressable onPress={onClose} style={styles.closeBtn}>
-            <Text style={styles.closeText}>{isRTL ? 'סגור' : 'Close'}</Text>
-          </Pressable>
-          {user && (
-            <Pressable onPress={() => { logout(); onClose(); }} style={[styles.closeBtn, { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, marginTop: 10 }]}>
-              <Text style={[styles.closeText, { color: colors.text }]}>{t(lang, 'auth.logout')}</Text>
-            </Pressable>
-          )}
-        </View>
-      </View>
-    </Modal>
-=======
       {/* קומפוננטת המודל לפידבק */}
       <FeedbackModal visible={feedbackVisible} onClose={() => setFeedbackVisible(false)} />
     </>
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   );
 }
 
@@ -221,7 +208,7 @@ const styles = StyleSheet.create({
   checkboxInner: { width: 12, height: 12, borderRadius: 3, backgroundColor: '#ffffff' },
   checkboxLabelWrapper: { flex: 1 },
   checkboxLabel: { fontSize: 13, fontWeight: '600' },
-  
+
   // --- עיצוב חדש לכפתור פידבק (תואם לשאר הכפתורים) ---
   feedbackButton: {
     borderWidth: 1.5,
