@@ -22,12 +22,7 @@ export default function AutoShrinkTextTariff({
   style,
   ...rest
 }: Props) {
-<<<<<<< HEAD
   const [font, setFont] = useState(minFont > 0 ? minFont : 10);
-=======
-  const [font, setFont] = useState(maxFont);
-  
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   const lowRef = useRef(minFont);
   const highRef = useRef(maxFont);
   const doneRef = useRef(false);
@@ -53,7 +48,7 @@ export default function AutoShrinkTextTariff({
     }
 
     const lines = e.nativeEvent.lines ?? [];
-    
+
     // בדיקה 1: האם חרגנו מכמות השורות?
     const fitsLines = lines.length <= (maxLines ?? 1);
 
@@ -87,14 +82,9 @@ export default function AutoShrinkTextTariff({
     }
 
     const next = Math.floor((lowRef.current + highRef.current + 1) / 2);
-<<<<<<< HEAD
     if (next !== font) {
       setFont(next);
     } else {
-=======
-    if (next !== font) setFont(next);
-    else {
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
       doneRef.current = true;
     }
   };
@@ -116,12 +106,12 @@ export default function AutoShrinkTextTariff({
       numberOfLines={maxLines}
       onTextLayout={onTextLayout}
       style={[
-        { 
-          fontSize: font, 
-          lineHeight: line, 
+        {
+          fontSize: font,
+          lineHeight: line,
           maxHeight: maxH,
           width: finalWidth, // הוספנו את זה חזרה! זה מכריח שבירת שורות.
-        }, 
+        },
         style as any
       ]}
     >

@@ -1,40 +1,11 @@
-<<<<<<< HEAD
-import React, { useMemo, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, LayoutChangeEvent, Pressable } from 'react-native';
-import { useAppTheme } from '@/shared/theme/theme';
-import TariffSlotRow from './TariffSlotRow';
-=======
 import React, { useMemo, useState, useEffect } from 'react'
 import { View, Text, StyleSheet, LayoutChangeEvent, Pressable } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { useAppTheme } from '@/shared/theme/theme'
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
 
 type DisplaySlot = { id: string; label: string; value: number };
 
 type Props = {
-<<<<<<< HEAD
-  label: string;
-  items: DisplaySlot[];
-  maxSlots: number;
-  direction: 'ltr' | 'rtl';
-  isActive: boolean;
-  onPress: () => void;
-  isSymbolMode: boolean;
-  symbolFontSize?: number;
-  showBonusRow?: boolean;
-  onLayout?: (event: LayoutChangeEvent) => void;
-  onSlotWidthsChange?: (widths: number[]) => void;
-};
-
-const H_LABEL = 56;
-const H_VALUE = 28;
-const H_BONUS = 24;
-const COLOR_VALUE = '#FFC107';
-const COLOR_VALUE_BG = '#FFF8E1';
-const COLOR_BONUS_BG = '#B3E5FC';
-const SLOT_HPAD = 4;
-=======
   label: string
   items: DisplaySlot[]
   maxSlots: number
@@ -61,18 +32,17 @@ const H_BONUS = 24
 const COLOR_VALUE = '#FFC107'
 const COLOR_VALUE_BG = '#FFF8E1'
 const COLOR_BONUS_BG = '#B3E5FC'
-const SLOT_HPAD = 0 
+const SLOT_HPAD = 0
 const COLOR_ILLEGAL_BORDER = '#DC2626'
 const COLOR_WARNING = '#DC2626'
 
 function getSymbolFontSizeByLength(label: string): number {
   const len = label ? label.length : 0
-  if (len <= 1) return 20 
+  if (len <= 1) return 20
   if (len === 2) return 18
   if (len === 3) return 14
   return 10
 }
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
 
 export default function TariffPassRow({
   label,
@@ -84,12 +54,6 @@ export default function TariffPassRow({
   isSymbolMode,
   symbolFontSize,
   showBonusRow = false,
-<<<<<<< HEAD
-  onLayout,
-  onSlotWidthsChange,
-}: Props) {
-  const { colors } = useAppTheme();
-=======
   bonusValues,
   illegalIndices,
   warningMessages,
@@ -102,17 +66,12 @@ export default function TariffPassRow({
 }: Props) {
   const { colors } = useAppTheme()
   const accent = colors.text
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
 
   const layoutRTL = direction === 'rtl';
 
-<<<<<<< HEAD
-  const ordered = useMemo(() => items, [items]);
-=======
   const isHebrewTitle = /[\u0590-\u05FF]/.test(label)
 
   const ordered = useMemo(() => items, [items])
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
 
   const slots = useMemo(() => {
     const out: Array<DisplaySlot | null> = new Array(maxSlots).fill(null);
@@ -122,26 +81,6 @@ export default function TariffPassRow({
     } else {
       for (let i = 0; i < k; i++) out[i] = ordered[i];
     }
-<<<<<<< HEAD
-    return out;
-  }, [ordered, layoutRTL, maxSlots]);
-
-  return (
-    <Pressable
-      onPress={onPress}
-      onLayout={onLayout}
-      style={({ pressed }) => [
-        styles.container,
-        {
-          borderColor: isActive ? COLOR_VALUE : colors.border,
-          backgroundColor: isActive ? colors.card : 'transparent',
-          opacity: pressed ? 0.9 : 1,
-        },
-      ]}
-    >
-      <View style={styles.labelRow}>
-        <Text
-=======
     return out
   }, [ordered, layoutRTL, maxSlots])
 
@@ -266,15 +205,15 @@ export default function TariffPassRow({
                       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', width: '100%' }}>
                         <Text
                           adjustsFontSizeToFit={true}
-                          minimumFontScale={0.3} 
-                          numberOfLines={3} 
+                          minimumFontScale={0.3}
+                          numberOfLines={3}
                           textBreakStrategy="simple"
                           android_hyphenationFrequency="none"
                           style={{
                             textAlign: 'center',
                             fontWeight: '900',
                             color: colors.text,
-                            fontSize: 11, 
+                            fontSize: 11,
                             lineHeight: 12,
                             writingDirection: writing,
                           }}
@@ -287,7 +226,7 @@ export default function TariffPassRow({
                     <Text
                       style={{
                         ...CENTER,
-                        fontSize: 18, 
+                        fontSize: 18,
                         fontWeight: '900',
                         color: colors.text,
                       }}
@@ -331,7 +270,7 @@ export default function TariffPassRow({
                 const hasElement = !!slot
                 let bonusText = '—'
                 if (hasElement) {
-                   bonusText = (rawBonus != null && Number.isFinite(rawBonus)) ? rawBonus.toFixed(1) : '0.0'
+                  bonusText = (rawBonus != null && Number.isFinite(rawBonus)) ? rawBonus.toFixed(1) : '0.0'
                 }
 
                 return (
@@ -353,7 +292,7 @@ export default function TariffPassRow({
                       minimumFontScale={0.5}
                       style={{
                         ...CENTER,
-                        fontSize: 14, 
+                        fontSize: 14,
                         fontWeight: '800',
                         color: '#01579B',
                         writingDirection: 'ltr',
@@ -371,7 +310,6 @@ export default function TariffPassRow({
 
       {hasWarnings && (
         <View
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
           style={[
             styles.warningRow,
             {
@@ -380,40 +318,6 @@ export default function TariffPassRow({
             },
           ]}
         >
-<<<<<<< HEAD
-          {label}
-        </Text>
-      </View>
-
-      <View style={styles.slotsOuter}>
-        <TariffSlotRow
-          items={items}
-          maxSlots={maxSlots}
-          direction={direction}
-          isSymbolMode={isSymbolMode}
-          symbolFontSize={symbolFontSize}
-          slotHPadding={SLOT_HPAD}
-          height={H_LABEL}
-          onWidthsChange={onSlotWidthsChange}
-        />
-
-        <View style={[styles.row, { marginTop: 6 }]}>
-          {slots.map((x, idx) => (
-            <View
-              key={`value_slot_${idx}`}
-              style={[
-                styles.slot,
-                styles.valueSlot,
-                {
-                  height: H_VALUE,
-                  backgroundColor: COLOR_VALUE_BG,
-                  borderColor: 'transparent',
-                },
-              ]}
-            >
-              <Text numberOfLines={1} style={styles.valueText}>
-                {x ? x.value.toFixed(1) : '—'}
-=======
           {warningMessages!.map((msg, i) => (
             <View
               key={`warn_${i}`}
@@ -437,50 +341,13 @@ export default function TariffPassRow({
                 numberOfLines={2}
               >
                 {msg}
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
               </Text>
             </View>
           ))}
         </View>
-<<<<<<< HEAD
-
-        {showBonusRow && (
-          <View style={[styles.row, { marginTop: 4 }]}>
-            {slots.map((_, idx) => (
-              <View
-                key={`bonus_slot_${idx}`}
-                style={[
-                  styles.slot,
-                  styles.bonusSlot,
-                  {
-                    height: H_BONUS,
-                    backgroundColor: COLOR_BONUS_BG,
-                    borderColor: 'transparent',
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    textAlign: 'center',
-                    fontSize: 14,
-                    fontWeight: '800',
-                    color: '#01579B',
-                  }}
-                >
-                  —
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
-      </View>
-    </Pressable>
-  );
-=======
       )}
     </View>
   )
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
 }
 
 const styles = StyleSheet.create({
@@ -492,9 +359,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   labelRow: { marginBottom: 6 },
-  passTitle: { 
+  passTitle: {
     fontSize: 14,
-    fontWeight: '800' 
+    fontWeight: '800'
   },
   slotsOuter: { paddingHorizontal: 2 },
   row: {
@@ -525,13 +392,11 @@ const styles = StyleSheet.create({
     marginTop: 4,
     paddingHorizontal: 4,
   },
-<<<<<<< HEAD
-});
-=======
   warningText: {
     fontSize: 12,
     color: COLOR_WARNING,
     fontWeight: '600',
   },
 })
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
+
+const CENTER = { alignItems: 'center' as const, justifyContent: 'center' as const, textAlign: 'center' as const }

@@ -12,11 +12,7 @@ type Props = {
   isSymbolMode?: boolean;
   symbolFontSize?: number;
   extraBottomPadding?: number;
-<<<<<<< HEAD
   onScroll?: (y: number) => void;
-=======
-  onScrollOffsetChange?: (offsetY: number) => void;
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
 };
 
 export type ElementsGridHandle = {
@@ -33,11 +29,7 @@ function ElementsGridInner(
     isSymbolMode,
     symbolFontSize,
     extraBottomPadding,
-<<<<<<< HEAD
     onScroll,
-=======
-    onScrollOffsetChange,
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   }: Props,
   ref: React.Ref<ElementsGridHandle>,
 ) {
@@ -66,15 +58,15 @@ function ElementsGridInner(
   const paddingBottom = 24 + (extraBottomPadding ?? 0);
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (onScrollOffsetChange) {
-      onScrollOffsetChange(e.nativeEvent.contentOffset.y);
+    if (onScroll) {
+      onScroll(e.nativeEvent.contentOffset.y);
     }
   };
 
   return (
     <FlatList
       ref={listRef}
-      onScroll={(e) => onScroll?.(e.nativeEvent.contentOffset.y)}
+      onScroll={handleScroll}
       scrollEventThrottle={16}
       data={elements}
       keyExtractor={(item, index) => `${item.id}_${index}`}
@@ -128,8 +120,6 @@ function ElementsGridInner(
           <Text style={{ color: colors.text, fontWeight: '800' }}>—</Text>
         </View>
       }
-      onScroll={handleScroll}
-      scrollEventThrottle={16}
     />
   );
 }

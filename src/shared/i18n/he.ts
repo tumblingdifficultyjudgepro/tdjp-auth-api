@@ -9,7 +9,6 @@ const he = {
     settings: 'הגדרות',
   },
 
-<<<<<<< HEAD
   home: {
     greeting: 'ברוכה הבאה',
     dailyQuoteTitle: 'הציטוט היומי',
@@ -29,7 +28,8 @@ const he = {
     login: 'התחברות',
     register: 'הרשמה',
     logout: 'התנתקות'
-=======
+  },
+
   settings: {
     tariffLocation: {
       title: 'מיקום קבצי טריף',
@@ -41,7 +41,6 @@ const he = {
     tariffAllowIllegalExport: {
       title: 'אפשר ייצוא טריף לפסים לא חוקיים',
     },
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   },
 
   screens: {
@@ -255,7 +254,7 @@ const he = {
     },
   },
 
- feedback: {
+  feedback: {
     btnLabel: 'הצע רעיון / דווח על באג',
     title: 'שליחת פידבק',
     typeIdea: 'רעיון לשיפור',
@@ -275,7 +274,7 @@ const he = {
     successBugTitle: 'תודה על הדיווח!',
     successBugBody: 'ננסה לטפל בזה בהקדם.',
     close: 'סגור',
-},
+  },
 } as const;
 
 export default he;

@@ -1,7 +1,10 @@
-<<<<<<< HEAD
-import React, { useState, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
+import { StyleSheet, View, Platform, Linking, LayoutChangeEvent, BackHandler } from 'react-native';
 import * as Sharing from 'expo-sharing';
+import * as FileSystemLegacy from 'expo-file-system/legacy';
+import * as IntentLauncher from 'expo-intent-launcher';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
 import TopBar from '@/shared/ui/TopBar';
@@ -9,7 +12,7 @@ import { t } from '@/shared/i18n';
 import AthleteDetailsSection, { AthleteDetails } from '@/features/tariff/components/AthleteDetailsSection';
 import ActionsBar from '@/features/elementKeyboard/components/ActionsBar';
 import SortingBar from '@/features/elementKeyboard/components/SortingBar';
-import ElementsGrid from '@/features/elementKeyboard/components/ElementsGrid';
+import ElementsGrid, { ElementsGridHandle } from '@/features/elementKeyboard/components/ElementsGrid';
 import useTariffPassKeyboard from '@/features/tariff/state/useTariffPassKeyboard';
 import TariffPassRow from '@/features/tariff/components/TariffPassRow';
 import PassWarningOverlay from '@/features/tariff/components/PassWarningOverlay';
@@ -21,41 +24,10 @@ import { TariffExportData, TariffPassRowData } from '@/features/tariff/export/ta
 import { TariffLang } from '@/features/tariff/background/tariffBackground';
 import { getElementById } from '@/shared/data/elements';
 import TariffSlotRow from '@/features/tariff/components/TariffSlotRow';
-=======
-import React, { useState, useRef, useMemo, useEffect } from 'react'
-import { StyleSheet, View, Platform, Linking, LayoutChangeEvent, BackHandler } from 'react-native'
-import * as Sharing from 'expo-sharing'
-import * as FileSystemLegacy from 'expo-file-system/legacy'
-import * as IntentLauncher from 'expo-intent-launcher'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useNavigation, useFocusEffect } from '@react-navigation/native'
-import { useAppTheme } from '@/shared/theme/theme'
-import { useLang } from '@/shared/state/lang'
-import TopBar from '@/shared/ui/TopBar'
-import { t } from '@/shared/i18n'
-import AthleteDetailsSection, { AthleteDetails } from '@/features/tariff/components/AthleteDetailsSection'
-import ActionsBar from '@/features/elementKeyboard/components/ActionsBar'
-import SortingBar from '@/features/elementKeyboard/components/SortingBar'
-import ElementsGrid from '@/features/elementKeyboard/components/ElementsGrid'
-import useTariffPassKeyboard from '@/features/tariff/state/useTariffPassKeyboard'
-import TariffPassRow from '@/features/tariff/components/TariffPassRow'
-import PassWarningOverlay from '@/features/tariff/components/PassWarningOverlay'
-import type { DisplayItem } from '@/features/calculator/types'
-import TariffStickyActions from '@/features/tariff/components/TariffStickyActions'
-import TariffExportSuccessModal from '@/features/tariff/components/TariffExportSuccessModal'
-import { exportTariffPdf } from '@/features/tariff/export/exportTariffPdf'
-import { TariffExportData, TariffPassRowData } from '@/features/tariff/export/tariffOverlay'
-import { TariffLang } from '@/features/tariff/background/tariffBackground'
-import { getElementById } from '@/shared/data/elements'
-import { computePassBonuses } from '@/features/tariff/logic/tariffBonus'
-import { validatePasses } from '@/features/tariff/logic/tariffLegality'
-import TariffIllegalToast from '@/features/tariff/components/TariffIllegalToast'
-import TariffIllegalExportConfirm from '@/features/tariff/components/TariffIllegalExportConfirm'
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
-
-type ElementsGridHandle = {
-  scrollToTop: () => void
-}
+import { computePassBonuses } from '@/features/tariff/logic/tariffBonus';
+import { validatePasses } from '@/features/tariff/logic/tariffLegality';
+import TariffIllegalToast from '@/features/tariff/components/TariffIllegalToast';
+import TariffIllegalExportConfirm from '@/features/tariff/components/TariffIllegalExportConfirm';
 
 const TARIFF_DIR_KEY = 'tariffExportDirUri'
 const ALLOW_ILLEGAL_TARIFF_KEY = 'tariffAllowIllegalExport'
@@ -96,37 +68,11 @@ function mapPassDisplayToExport(
       value = item.dd
     }
 
-<<<<<<< HEAD
-    const symbol =
-      symbolFromBase ??
-      (typeof item.symbol === 'string' && item.symbol.trim() !== ''
-        ? item.symbol
-        : typeof item.label === 'string'
-          ? item.label
-          : '');
-
-    const value =
-      typeof item.value === 'number' || typeof item.value === 'string'
-        ? item.value
-        : typeof item.dd === 'number' || typeof item.dd === 'string'
-          ? item.dd
-          : null;
-
-    const bonus =
-      typeof item.bonus === 'number' || typeof item.bonus === 'string'
-        ? item.bonus
-        : 0;
-
-    symbols.push(symbol || null);
-    values.push(value);
-    bonuses.push(bonus);
-=======
     const bonus = i < bonuses.length ? bonuses[i] : null
 
     symbols.push(symbol)
     values.push(value)
     bonusesOut.push(bonus)
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   }
 
   return { symbols, values, bonuses: bonusesOut }
@@ -208,12 +154,11 @@ export default function TariffScreen() {
     level: null,
   })
 
-  // === לוגיקת חזרה ל-Home (מתוקן) ===
   useFocusEffect(
     React.useCallback(() => {
       const onBackPress = () => {
-        nav.navigate('Home'); 
-        return true; 
+        nav.navigate('Home');
+        return true;
       };
 
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -221,15 +166,13 @@ export default function TariffScreen() {
       return () => subscription.remove();
     }, [nav])
   );
-  // ==================================
 
   const [topBarHeight, setTopBarHeight] = useState(0)
   const [gridOffsetY, setGridOffsetY] = useState(0)
 
-  const [headerOffsetY, setHeaderOffsetY] = useState(0)
-  const [passesOffsetY, setPassesOffsetY] = useState(0)
-  const [pass1OffsetY, setPass1OffsetY] = useState(0)
-  const [pass2OffsetY, setPass2OffsetY] = useState(0)
+  // Layout tracking for sticky behavior
+  const [passLayouts, setPassLayouts] = useState<{ [key: number]: number }>({});
+  const [passesSectionY, setPassesSectionY] = useState(0);
 
   const [pass1SlotWidths, setPass1SlotWidths] = useState<number[]>([])
   const [pass2SlotWidths, setPass2SlotWidths] = useState<number[]>([])
@@ -241,7 +184,7 @@ export default function TariffScreen() {
       .then(value => {
         setAllowIllegalExport(value === '1')
       })
-      .catch(() => {})
+      .catch(() => { })
   }, [])
 
   const {
@@ -445,22 +388,6 @@ export default function TariffScreen() {
     setTopBarHeight(e.nativeEvent.layout.height)
   }
 
-  const handleHeaderLayout = (e: LayoutChangeEvent) => {
-    setHeaderOffsetY(e.nativeEvent.layout.y)
-  }
-
-  const handlePassesLayout = (e: LayoutChangeEvent) => {
-    setPassesOffsetY(e.nativeEvent.layout.y)
-  }
-
-  const handlePass1Layout = (e: LayoutChangeEvent) => {
-    setPass1OffsetY(e.nativeEvent.layout.y)
-  }
-
-  const handlePass2Layout = (e: LayoutChangeEvent) => {
-    setPass2OffsetY(e.nativeEvent.layout.y)
-  }
-
   const handlePass1SlotWidthMeasured = (idx: number, width: number) => {
     setPass1SlotWidths(prev => {
       if (prev[idx] === width) return prev
@@ -479,23 +406,19 @@ export default function TariffScreen() {
     })
   }
 
-  const pass1GlobalOffset = headerOffsetY + passesOffsetY + pass1OffsetY
-  const pass2GlobalOffset = headerOffsetY + passesOffsetY + pass2OffsetY
+  const activePassY = activePass && passLayouts[activePass] !== undefined
+    ? passLayouts[activePass] + passesSectionY
+    : 99999;
 
-  const activePassOffset =
-    activePass === 1 ? pass1GlobalOffset : activePass === 2 ? pass2GlobalOffset : 0
-
-  const showStickyPassHeader = useMemo(() => {
-    if (!activePass) return false
-    return gridOffsetY >= activePassOffset
-  }, [activePass, activePassOffset, gridOffsetY])
+  const stickyTriggerY = activePassY + 20;
+  const isSticky = activePass !== null && gridOffsetY > stickyTriggerY;
 
   const activePassLabel =
     activePass === 1
       ? t(lang, 'tariff.passes.pass1')
       : activePass === 2
-      ? t(lang, 'tariff.passes.pass2')
-      : ''
+        ? t(lang, 'tariff.passes.pass2')
+        : ''
 
   const activePassItems =
     activePass === 1 ? (pass1Display as any) : activePass === 2 ? (pass2Display as any) : []
@@ -505,94 +428,30 @@ export default function TariffScreen() {
   const activePassIllegalIndices =
     activePass === 1 ? pass1IllegalIndices : activePass === 2 ? pass2IllegalIndices : []
 
-  const activePassWarnings =
-    activePass === 1 ? pass1Warnings : activePass === 2 ? pass2Warnings : []
-
   const stickySlotWidths =
     activePass === 1 ? pass1SlotWidths : activePass === 2 ? pass2SlotWidths : []
 
-  // Sticky Header Logic
-  const [scrollY, setScrollY] = useState(0);
-  const [passLayouts, setPassLayouts] = useState<{ [key: number]: number }>({});
-  // Track slot widths to prevent resize flashing on sticky mount
-  const [passSlotWidths, setPassSlotWidths] = useState<{ [key: number]: number[] }>({});
-
-  // Assuming 'Passes Section' starts after Athlete Form.
-  // We need absolute Y of the pass row. 
-  // Since we rely on onLayout of TariffPassRow inside the Header, 
-  // we also need to know the offset of the "Passes Section" or just accumulate Ys.
-  // But simpler: The ListHeaderComponent is one block. 
-  // Let's assume a rough structure or tracking.
-  // Actually, nativeEvent.layout.y inside ListHeaderComponent is distinct from List offset.
-  // We need the Y position relative to the SCROLL CONTENT.
-  // The Header IS at y=0 of scroll content.
-  // So: PassRow.y + PassesSection.y + HeaderWrapper.paddingTop etc.
-
-  // Let's track the "PassesSection" Y offset too
-  const [passesSectionY, setPassesSectionY] = useState(0);
-
-  const activePassY = activePass && passLayouts[activePass] !== undefined
-    ? passLayouts[activePass] + passesSectionY
-    : 99999;
-
-  // We want to stick when scrollY > activePassY.
-  // BUT: The "Element Row" is inside the Pass Row. 
-  // The Pass Row starts with a Label (Text).
-  // The Element Row starts slightly below that.
-  // Let's add a small offset (~20px for label row).
-  const stickyTriggerY = activePassY + 20;
-  const isSticky = activePass !== null && scrollY > stickyTriggerY;
-
   const header = (
-    <View style={styles.headerWrapper} onLayout={handleHeaderLayout}>
+    <View style={styles.headerWrapper}>
       <View style={styles.formWrapper}>
         <AthleteDetailsSection value={athlete} onChange={setAthlete} />
       </View>
 
-<<<<<<< HEAD
       <View
         style={styles.passesSection}
         onLayout={(e) => {
-          const y = e.nativeEvent.layout.y + 12;
+          const y = e.nativeEvent.layout.y + 12; // Approximation padding
           setPassesSectionY(y);
         }}
       >
-        <TariffPassRow
-          label={t(lang, 'tariff.passes.pass1')}
-          items={pass1Display}
-          maxSlots={maxSlots}
-          direction={barDirection}
-          isActive={activePass === 1}
-          onPress={() => setActivePass(activePass === 1 ? null : 1)}
-          isSymbolMode={elementMode === 'symbol'}
-          symbolFontSize={symbolFontSize}
-          showBonusRow={athlete.autoBonus}
-          onLayout={(e) => {
-            const y = e.nativeEvent.layout.y;
-            setPassLayouts(prev => ({ ...prev, 1: y }));
-          }}
-        />
-        <TariffPassRow
-          label={t(lang, 'tariff.passes.pass2')}
-          items={pass2Display}
-          maxSlots={maxSlots}
-          direction={barDirection}
-          isActive={activePass === 2}
-          onPress={() => setActivePass(activePass === 2 ? null : 2)}
-          isSymbolMode={elementMode === 'symbol'}
-          symbolFontSize={symbolFontSize}
-          showBonusRow={athlete.autoBonus}
-          onLayout={(e) => {
-            const y = e.nativeEvent.layout.y;
-            setPassLayouts(prev => ({ ...prev, 2: y }));
-          }}
-        />
-=======
-      <View style={styles.passesSection} onLayout={handlePassesLayout}>
-        <View onLayout={handlePass1Layout}>
+        {/* Pass 1 - Wrapped in View for onLayout */}
+        <View onLayout={(e: LayoutChangeEvent) => {
+          const y = e.nativeEvent.layout.y;
+          setPassLayouts(prev => ({ ...prev, 1: y }));
+        }}>
           <TariffPassRow
             label={t(lang, 'tariff.passes.pass1')}
-            items={pass1Display as any}
+            items={pass1Display}
             maxSlots={maxSlots}
             direction={barDirection}
             isActive={activePass === 1}
@@ -607,10 +466,14 @@ export default function TariffScreen() {
           />
         </View>
 
-        <View onLayout={handlePass2Layout}>
+        {/* Pass 2 - Wrapped in View for onLayout */}
+        <View onLayout={(e: LayoutChangeEvent) => {
+          const y = e.nativeEvent.layout.y;
+          setPassLayouts(prev => ({ ...prev, 2: y }));
+        }}>
           <TariffPassRow
             label={t(lang, 'tariff.passes.pass2')}
-            items={pass2Display as any}
+            items={pass2Display}
             maxSlots={maxSlots}
             direction={barDirection}
             isActive={activePass === 2}
@@ -624,7 +487,6 @@ export default function TariffScreen() {
             onSlotWidthMeasured={handlePass2SlotWidthMeasured}
           />
         </View>
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
       </View>
 
       <View style={styles.keyboardHeader}>
@@ -682,16 +544,17 @@ export default function TariffScreen() {
     setShowIllegalExportConfirm(false)
   }
 
+  const showStickyPassHeader = useMemo(() => {
+    if (!activePass) return false
+    return gridOffsetY >= activePassOffset
+  }, [activePass, activePassOffset, gridOffsetY])
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
-<<<<<<< HEAD
-      <View style={[styles.topBarWrapper, { borderBottomColor: colors.border, zIndex: 10 }]}>
-=======
       <View
-        style={[styles.topBarWrapper, { borderBottomColor: colors.border }]}
+        style={[styles.topBarWrapper, { borderBottomColor: colors.border, zIndex: 10 }]}
         onLayout={handleTopBarLayout}
       >
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
         <TopBar
           titleKey="tabs.tariff"
           showBack={false}
@@ -714,14 +577,10 @@ export default function TariffScreen() {
           isSymbolMode={elementMode === 'symbol'}
           symbolFontSize={keyboardSymbolFontSize}
           extraBottomPadding={80}
-<<<<<<< HEAD
-          onScroll={(y) => setScrollY(y)}
-=======
-          onScrollOffsetChange={setGridOffsetY}
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
+          onScroll={(y) => setGridOffsetY(y)}
         />
 
-        {/* Sticky Header Overlay */}
+        {/* Sticky Header Overlay - using TariffSlotRow from HEAD for visual consistency in sticky mode */}
         {isSticky && activePass && (
           <View style={styles.stickyHeaderContainer}>
             <View style={[
@@ -737,10 +596,10 @@ export default function TariffScreen() {
                 maxSlots={maxSlots}
                 direction={barDirection}
                 isSymbolMode={elementMode === 'symbol'}
-                symbolFontSize={symbolFontSize}
+                symbolFontSize={slotSymbolFontSize}
                 slotHPadding={4}
                 height={56}
-                initialWidths={passSlotWidths[activePass]}
+                initialWidths={stickySlotWidths}
               />
             </View>
           </View>
@@ -752,7 +611,7 @@ export default function TariffScreen() {
           style={[
             styles.stickyPassWrapper,
             {
-              top: topBarHeight + 4, 
+              top: topBarHeight + 4,
               elevation: 4,
               shadowColor: '#000',
               shadowOffset: { width: 0, height: 2 },
@@ -761,10 +620,10 @@ export default function TariffScreen() {
             },
           ]}
         >
-          <View style={{ 
-              backgroundColor: colors.bg, 
-              borderRadius: 12,
-              overflow: 'hidden' 
+          <View style={{
+            backgroundColor: colors.bg,
+            borderRadius: 12,
+            overflow: 'hidden'
           }}>
             <TariffPassRow
               key={`sticky_pass_${activePass}`}
@@ -802,6 +661,7 @@ export default function TariffScreen() {
 
       <TariffExportSuccessModal
         visible={showExportModal}
+        // uri={exportedUri}  <-- REMOVED because irrelevant and causes type error
         onClose={() => setShowExportModal(false)}
         onOpen={handleOpenPdf}
         onShare={handleSharePdf}
@@ -809,7 +669,7 @@ export default function TariffScreen() {
 
       <TariffIllegalToast
         visible={showIllegalToast}
-        onHide={() => setShowIllegalToast(false)}
+        onDismiss={() => setShowIllegalToast(false)}
       />
 
       <TariffIllegalExportConfirm
@@ -822,56 +682,55 @@ export default function TariffScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
+  screen: {
+    flex: 1,
+  },
   topBarWrapper: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
   },
   body: {
     flex: 1,
-    paddingHorizontal: 8,
-    paddingBottom: 4,
+    position: 'relative',
   },
   headerWrapper: {
-    paddingHorizontal: 8,
-    paddingTop: 12,
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   formWrapper: {
     paddingHorizontal: 8,
+    marginTop: 8,
   },
   passesSection: {
-    marginTop: 12,
-    gap: 10,
+    marginTop: 8,
+    paddingHorizontal: 8,
   },
   keyboardHeader: {
-    marginTop: 12,
+    paddingHorizontal: 12,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: '#f0f0f0',
   },
-<<<<<<< HEAD
   stickyHeaderContainer: {
     position: 'absolute',
     top: 4,
-    left: 8,
-    right: 8,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
     zIndex: 100,
   },
   stickyBubble: {
-    borderRadius: 12,
-    borderWidth: 1.5,
     paddingHorizontal: 8,
-    paddingVertical: 8,
-    elevation: 6,
-    shadowOffset: { width: 0, height: 4 },
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
-    shadowRadius: 4,
+    shadowRadius: 3.84,
   },
-});
-=======
   stickyPassWrapper: {
     position: 'absolute',
-    left: 8,
-    right: 8,
-    paddingTop: 0,
-    zIndex: 5,
+    left: 12,
+    right: 12,
+    zIndex: 90,
   },
-})
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
+});
