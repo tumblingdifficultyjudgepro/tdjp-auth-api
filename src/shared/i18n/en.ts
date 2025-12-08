@@ -9,7 +9,6 @@ const en = {
     settings: 'Settings',
   },
 
-<<<<<<< HEAD
   home: {
     greeting: 'Welcome Back',
     dailyQuoteTitle: 'Daily Quote',
@@ -29,7 +28,8 @@ const en = {
     login: 'Login',
     register: 'Register',
     logout: 'Logout'
-=======
+  },
+
   settings: {
     tariffLocation: {
       title: 'Tariff files location',
@@ -41,7 +41,6 @@ const en = {
     tariffAllowIllegalExport: {
       title: 'Allow tariff export for illegal passes',
     },
->>>>>>> 778d6946b9e5d7a2d69bf58398a50d5de31618dd
   },
 
   screens: {
@@ -255,7 +254,7 @@ const en = {
     },
   },
 
-feedback: {
+  feedback: {
     btnLabel: 'Suggest Idea / Report Bug',
     title: 'Send Feedback',
     typeIdea: 'Feature Idea',
