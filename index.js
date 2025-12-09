@@ -769,6 +769,26 @@ app.post('/auth/change-password/start', requireAuth, async (req, res) => {
   res.json({ ok: true, verificationId: ins.rows[0].id });
 });
 
+app.post('/auth/change-password/verify-code', requireAuth, async (req, res) => {
+  const { verificationId, code } = req.body || {};
+  if (!verificationId || !code) return res.status(400).json({ error: 'Missing fields' });
+
+  const q = await pool.query(`SELECT * FROM verifications WHERE id=$1 AND purpose='change_password'`, [verificationId]);
+  if (!q.rowCount) return res.status(400).json({ error: 'Invalid verification id' });
+
+  const v = q.rows[0];
+  if (v.used) return res.status(400).json({ error: 'Code already used' });
+  if (new Date(v.expires_at) < new Date()) return res.status(400).json({ error: 'Code expired' });
+  if (v.payload?.uid !== req.user.uid) return res.status(403).json({ error: 'Unauthorized verification' });
+
+  if (String(v.code) !== String(code)) {
+    await pool.query(`UPDATE verifications SET attempts = attempts + 1 WHERE id=$1`, [verificationId]);
+    return res.status(401).json({ error: 'Invalid code' });
+  }
+
+  res.json({ ok: true });
+});
+
 app.post('/auth/change-password/complete', requireAuth, async (req, res) => {
   const { verificationId, code, newPassword } = req.body || {};
   if (!verificationId || !code || !newPassword) return res.status(400).json({ error: 'Missing fields' });
