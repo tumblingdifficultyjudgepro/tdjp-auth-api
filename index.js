@@ -33,7 +33,7 @@ if (!connectionString) {
   process.exit(1);
 }
 const pool = new Pool({ connectionString, ssl: { rejectUnauthorized: false } });
-try { console.log('DB host:', new URL(connectionString).hostname); } catch {}
+try { console.log('DB host:', new URL(connectionString).hostname); } catch { }
 
 /* ---------- JWT ---------- */
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
@@ -104,12 +104,12 @@ async function sendVerificationSms(toE164, code) {
 
 /* ---------- Phone helpers ---------- */
 const COUNTRY_NAME_TO_META = {
-  'ישראל':        { dial: '972', dropLeadingZero: true,  min: 8,  max: 10 },
-  'בריטניה':      { dial: '44',  dropLeadingZero: true,  min: 9,  max: 10 },
-  'ארצות הברית':  { dial: '1',   dropLeadingZero: false, min: 10, max: 10 },
-  'רוסיה':        { dial: '7',   dropLeadingZero: true,  min: 10, max: 10 },
-  'אוקראינה':     { dial: '380', dropLeadingZero: true,  min: 9,  max: 9  },
-  'סין':          { dial: '86',  dropLeadingZero: false, min: 11, max: 11 },
+  'ישראל': { dial: '972', dropLeadingZero: true, min: 8, max: 10 },
+  'בריטניה': { dial: '44', dropLeadingZero: true, min: 9, max: 10 },
+  'ארצות הברית': { dial: '1', dropLeadingZero: false, min: 10, max: 10 },
+  'רוסיה': { dial: '7', dropLeadingZero: true, min: 10, max: 10 },
+  'אוקראינה': { dial: '380', dropLeadingZero: true, min: 9, max: 9 },
+  'סין': { dial: '86', dropLeadingZero: false, min: 11, max: 11 },
 };
 
 function normalizeToE164(countryName, phoneRaw) {
@@ -155,51 +155,51 @@ function detectLang(req) {
 
 const MSG = {
   he: {
-    MISSING_FIELDS:    'חסרים שדות חובה',
-    EMAIL_INVALID:     'כתובת מייל לא תקינה',
-    PASSWORD_SHORT:    'סיסמה חייבת להיות באורך 8 תווים לפחות',
-    INVALID_COUNTRY:   'מדינה לא תקינה',
-    CLUB_REQUIRED:     'יש לבחור אגודה מהרשימה',
-    INVALID_JUDGE:     'דרגת שיפוט לא תקינה',
-    BREVET_REQUIRED:   'יש לבחור דרגת ברווה (1–4)',
-    BREVET_NOT_ALLOWED:'אסור לבחור דרגת ברווה כשלא מסומן שופט/ת',
-    EMAIL_TAKEN:       'האימייל כבר רשום במערכת',
-    PHONE_INVALID:     'מספר טלפון לא תקין',
-    PHONE_TAKEN:       'מספר הטלפון כבר רשום במערכת',
-    DUPLICATE:         'פריט כבר קיים',
-    SERVER:            'שגיאת שרת'
+    MISSING_FIELDS: 'חסרים שדות חובה',
+    EMAIL_INVALID: 'כתובת מייל לא תקינה',
+    PASSWORD_SHORT: 'סיסמה חייבת להיות באורך 8 תווים לפחות',
+    INVALID_COUNTRY: 'מדינה לא תקינה',
+    CLUB_REQUIRED: 'יש לבחור אגודה מהרשימה',
+    INVALID_JUDGE: 'דרגת שיפוט לא תקינה',
+    BREVET_REQUIRED: 'יש לבחור דרגת ברווה (1–4)',
+    BREVET_NOT_ALLOWED: 'אסור לבחור דרגת ברווה כשלא מסומן שופט/ת',
+    EMAIL_TAKEN: 'האימייל כבר רשום במערכת',
+    PHONE_INVALID: 'מספר טלפון לא תקין',
+    PHONE_TAKEN: 'מספר הטלפון כבר רשום במערכת',
+    DUPLICATE: 'פריט כבר קיים',
+    SERVER: 'שגיאת שרת'
   },
   en: {
-    MISSING_FIELDS:    'Missing required fields',
-    EMAIL_INVALID:     'Invalid email address',
-    PASSWORD_SHORT:    'Password must be at least 8 characters',
-    INVALID_COUNTRY:   'Invalid country',
-    CLUB_REQUIRED:     'Club must be selected from the list',
-    INVALID_JUDGE:     'Invalid judge level',
-    BREVET_REQUIRED:   'Brevet level is required (1–4)',
-    BREVET_NOT_ALLOWED:'Brevet level is not allowed when not a judge',
-    EMAIL_TAKEN:       'Email is already registered',
-    PHONE_INVALID:     'Invalid phone number',
-    PHONE_TAKEN:       'Phone number is already registered',
-    DUPLICATE:         'Item already exists',
-    SERVER:            'Server error'
+    MISSING_FIELDS: 'Missing required fields',
+    EMAIL_INVALID: 'Invalid email address',
+    PASSWORD_SHORT: 'Password must be at least 8 characters',
+    INVALID_COUNTRY: 'Invalid country',
+    CLUB_REQUIRED: 'Club must be selected from the list',
+    INVALID_JUDGE: 'Invalid judge level',
+    BREVET_REQUIRED: 'Brevet level is required (1–4)',
+    BREVET_NOT_ALLOWED: 'Brevet level is not allowed when not a judge',
+    EMAIL_TAKEN: 'Email is already registered',
+    PHONE_INVALID: 'Invalid phone number',
+    PHONE_TAKEN: 'Phone number is already registered',
+    DUPLICATE: 'Item already exists',
+    SERVER: 'Server error'
   }
 };
 
 const ERR_META = {
-  MISSING_FIELDS:     { status: 400, field: null },
-  EMAIL_INVALID:      { status: 400, field: 'email' },
-  PASSWORD_SHORT:     { status: 400, field: 'password' },
-  INVALID_COUNTRY:    { status: 400, field: 'country' },
-  CLUB_REQUIRED:      { status: 400, field: 'club' },
-  INVALID_JUDGE:      { status: 400, field: 'judgeLevel' },
-  BREVET_REQUIRED:    { status: 400, field: 'brevetLevel' },
+  MISSING_FIELDS: { status: 400, field: null },
+  EMAIL_INVALID: { status: 400, field: 'email' },
+  PASSWORD_SHORT: { status: 400, field: 'password' },
+  INVALID_COUNTRY: { status: 400, field: 'country' },
+  CLUB_REQUIRED: { status: 400, field: 'club' },
+  INVALID_JUDGE: { status: 400, field: 'judgeLevel' },
+  BREVET_REQUIRED: { status: 400, field: 'brevetLevel' },
   BREVET_NOT_ALLOWED: { status: 400, field: 'brevetLevel' },
-  EMAIL_TAKEN:        { status: 409, field: 'email' },
-  PHONE_INVALID:      { status: 400, field: 'phone' },
-  PHONE_TAKEN:        { status: 409, field: 'phone' },
-  DUPLICATE:          { status: 409, field: null },
-  SERVER:             { status: 500, field: null }
+  EMAIL_TAKEN: { status: 409, field: 'email' },
+  PHONE_INVALID: { status: 400, field: 'phone' },
+  PHONE_TAKEN: { status: 409, field: 'phone' },
+  DUPLICATE: { status: 409, field: null },
+  SERVER: { status: 500, field: null }
 };
 
 function sendErr(req, res, code, overrides = {}) {
@@ -331,10 +331,10 @@ app.get('/', (_req, res) => {
   res.json({
     ok: true, version: BUILD_TAG,
     routes: [
-      '/health','/version','/_debug/db',
-      '/auth/register/start','/auth/register/verify',
-      '/auth/register','/auth/login',
-      '/auth/request-password-reset','/auth/reset-password',
+      '/health', '/version', '/_debug/db',
+      '/auth/register/start', '/auth/register/verify',
+      '/auth/register', '/auth/login',
+      '/auth/request-password-reset', '/auth/reset-password',
       '/me (GET/PUT)',
       '/admin/users'
     ],
@@ -398,7 +398,7 @@ app.post('/auth/register/start', authLimiter, async (req, res) => {
     if ((!firstName || !lastName) && fullName) {
       const p = splitFullName(fullName);
       firstName = firstName || p.first;
-      lastName  = lastName  || p.last;
+      lastName = lastName || p.last;
     }
     const full_name = toFullName(firstName, lastName);
 
@@ -532,7 +532,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
     if ((!firstName || !lastName) && fullName) {
       const p = splitFullName(fullName);
       firstName = firstName || p.first;
-      lastName  = lastName  || p.last;
+      lastName = lastName || p.last;
     }
     const full_name = toFullName(firstName, lastName);
 
@@ -560,9 +560,9 @@ app.post('/auth/register', authLimiter, async (req, res) => {
                  is_coach, is_judge, judge_level, brevet_level, avatar_url,
                  role, is_admin, created_at`,
       [email, password_hash, firstName || null, lastName || null, full_name,
-       phone || null, phone_e164, country || null, club || null,
-       !!isCoach, !!isJudge, judgeLevel || null, brevetLevel ? String(brevetLevel) : null,
-       avatarUrl || null, (isJudge ? 'judge' : (isCoach ? 'coach' : 'user'))]
+        phone || null, phone_e164, country || null, club || null,
+        !!isCoach, !!isJudge, judgeLevel || null, brevetLevel ? String(brevetLevel) : null,
+        avatarUrl || null, (isJudge ? 'judge' : (isCoach ? 'coach' : 'user'))]
     );
 
     const u = ins.rows[0];
@@ -583,7 +583,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
     if (e?.code === '23505') {
       const constraint = e?.constraint || '';
       if (constraint.includes('users_phone_e164_unique')) return sendErr(req, res, 'PHONE_TAKEN');
-      if (constraint.includes('users_email_key'))        return sendErr(req, res, 'EMAIL_TAKEN');
+      if (constraint.includes('users_email_key')) return sendErr(req, res, 'EMAIL_TAKEN');
       return sendErr(req, res, 'DUPLICATE');
     }
     console.error('Register error:', e);
@@ -695,18 +695,18 @@ app.put('/me', requireAuth, async (req, res) => {
        RETURNING id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
                  judge_level, brevet_level, avatar_url, role, is_admin, created_at`,
       [req.user.uid,
-       firstName ?? null,
-       lastName ?? null,
-       full_name,
-       phone ?? null,
-       phone_e164 ?? null,
-       country ?? null,
-       club ?? null,
-       typeof isCoach === 'boolean' ? isCoach : null,
-       typeof isJudge === 'boolean' ? isJudge : null,
-       judgeLevel ?? null,
-       brevetLevel ? String(brevetLevel) : null,
-       avatarUrl ?? null
+      firstName ?? null,
+      lastName ?? null,
+        full_name,
+      phone ?? null,
+      phone_e164 ?? null,
+      country ?? null,
+      club ?? null,
+      typeof isCoach === 'boolean' ? isCoach : null,
+      typeof isJudge === 'boolean' ? isJudge : null,
+      judgeLevel ?? null,
+      brevetLevel ? String(brevetLevel) : null,
+      avatarUrl ?? null
       ]
     );
     const u = q.rows[0];
@@ -760,7 +760,7 @@ app.post('/auth/reset-password', authLimiter, async (req, res) => {
   return res.json({ ok: true });
 });
 
-/* ---------- Admin endpoints (truncated for brevity, keep existing) ---------- */
+/* ---------- Admin endpoints ---------- */
 app.get('/admin/users', requireAuth, requireAdmin, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '50', 10), 200);
   const offset = Math.max(parseInt(req.query.offset || '0', 10), 0);
@@ -787,21 +787,19 @@ app.get('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
 app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
   try {
     const b = req.body || {};
-    // ... (Your existing admin patch logic here, no changes needed) ...
-    // Since you asked for minimal changes, I assume sticking to the provided logic is key.
-    // I'm pasting the FULL code you gave me to ensure nothing breaks.
-    
-    const first_name   = b.first_name   ?? b.firstName;
-    const last_name    = b.last_name    ?? b.lastName;
-    const email        = b.email ? normEmail(b.email) : undefined;
-    const phone        = b.phone;
-    const country      = b.country;
-    const club         = b.club;
-    const is_coach     = (typeof b.is_coach === 'boolean') ? b.is_coach : b.isCoach;
-    const is_judge     = (typeof b.is_judge === 'boolean') ? b.is_judge : b.isJudge;
-    const judge_level  = b.judge_level  ?? b.judgeLevel;
+
+    const first_name = b.first_name ?? b.firstName;
+    const last_name = b.last_name ?? b.lastName;
+    const email = b.email ? normEmail(b.email) : undefined;
+    const phone = b.phone;
+    const country = b.country;
+    const club = b.club;
+    const is_coach = (typeof b.is_coach === 'boolean') ? b.is_coach : b.isCoach;
+    const is_judge = (typeof b.is_judge === 'boolean') ? b.is_judge : b.isJudge;
+    const is_admin = (typeof b.is_admin === 'boolean') ? b.is_admin : b.isAdmin;
+    const judge_level = b.judge_level ?? b.judgeLevel;
     const brevet_level = b.brevet_level ?? (b.brevetLevel != null ? String(b.brevetLevel) : undefined);
-    const avatar_url   = b.avatar_url   ?? b.avatarUrl;
+    const avatar_url = b.avatar_url ?? b.avatarUrl;
 
     if (country !== undefined && country !== null && !ALLOWED_COUNTRIES.includes(country)) {
       return res.status(400).json({ error: 'Invalid country' });
@@ -841,18 +839,19 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
       }
     };
 
-    add('first_name',   first_name ?? null);
-    add('last_name',    last_name ?? null);
-    add('phone',        phone ?? null);
-    add('phone_e164',   phone_e164 ?? null);
-    add('country',      country ?? null);
-    add('club',         club ?? null);
-    add('is_coach',     (typeof is_coach === 'boolean') ? is_coach : null);
-    add('is_judge',     (typeof is_judge === 'boolean') ? is_judge : null);
-    add('judge_level',  judge_level ?? null);
+    add('first_name', first_name ?? null);
+    add('last_name', last_name ?? null);
+    add('phone', phone ?? null);
+    add('phone_e164', phone_e164 ?? null);
+    add('country', country ?? null);
+    add('club', club ?? null);
+    add('is_coach', (typeof is_coach === 'boolean') ? is_coach : null);
+    add('is_judge', (typeof is_judge === 'boolean') ? is_judge : null);
+    add('is_admin', (typeof is_admin === 'boolean') ? is_admin : null);
+    add('judge_level', judge_level ?? null);
     add('brevet_level', brevet_level ?? null);
-    add('avatar_url',   avatar_url ?? null);
-    add('email',        email ?? null);
+    add('avatar_url', avatar_url ?? null);
+    add('email', email ?? null);
 
     if (first_name !== undefined || last_name !== undefined) {
       const full_name = toFullName(first_name ?? null, last_name ?? null);
