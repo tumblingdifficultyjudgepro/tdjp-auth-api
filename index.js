@@ -725,6 +725,27 @@ app.put('/me', requireAuth, async (req, res) => {
   }
 });
 
+app.delete('/me', requireAuth, async (req, res) => {
+  await pool.query(`DELETE FROM users WHERE id=$1`, [req.user.uid]);
+  res.json({ ok: true });
+});
+
+app.post('/auth/change-password', requireAuth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Missing fields' });
+  if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 chars' });
+
+  const q = await pool.query(`SELECT password_hash FROM users WHERE id=$1`, [req.user.uid]);
+  if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
+
+  const valid = await bcrypt.compare(currentPassword, q.rows[0].password_hash);
+  if (!valid) return res.status(401).json({ error: 'Incorrect current password' });
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  await pool.query(`UPDATE users SET password_hash=$1 WHERE id=$2`, [hash, req.user.uid]);
+  res.json({ ok: true });
+});
+
 /* ---------- Password reset ---------- */
 app.post('/auth/request-password-reset', authLimiter, async (req, res) => {
   const { email } = req.body || {};
