@@ -732,6 +732,7 @@ app.delete('/me', requireAuth, async (req, res) => {
 
 app.post('/auth/change-password', requireAuth, async (req, res) => {
   const { currentPassword, newPassword } = req.body || {};
+  // Deprecated in favor of OTP flow, but kept for backward compatibility if needed
   if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Missing fields' });
   if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 chars' });
 
@@ -743,6 +744,55 @@ app.post('/auth/change-password', requireAuth, async (req, res) => {
 
   const hash = await bcrypt.hash(newPassword, 10);
   await pool.query(`UPDATE users SET password_hash=$1 WHERE id=$2`, [hash, req.user.uid]);
+  res.json({ ok: true });
+});
+
+app.post('/auth/change-password/start', requireAuth, async (req, res) => {
+  const q = await pool.query(`SELECT email FROM users WHERE id=$1`, [req.user.uid]);
+  if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
+  const { email } = q.rows[0];
+
+  const code = gen6();
+  const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 min
+
+  // Prefer email for this flow as requested "Official Email"
+  const channel = 'email';
+  const dest = email;
+
+  const ins = await pool.query(
+    `INSERT INTO verifications (purpose, channel, dest, code, expires_at, payload)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+    ['change_password', channel, dest, code, expires, { uid: req.user.uid }]
+  );
+
+  await sendVerificationEmail(email, code);
+  res.json({ ok: true, verificationId: ins.rows[0].id });
+});
+
+app.post('/auth/change-password/complete', requireAuth, async (req, res) => {
+  const { verificationId, code, newPassword } = req.body || {};
+  if (!verificationId || !code || !newPassword) return res.status(400).json({ error: 'Missing fields' });
+  if (newPassword.length < 8) return res.status(400).json({ error: 'Password must be at least 8 chars' });
+
+  const q = await pool.query(`SELECT * FROM verifications WHERE id=$1 AND purpose='change_password'`, [verificationId]);
+  if (!q.rowCount) return res.status(400).json({ error: 'Invalid verification id' });
+
+  const v = q.rows[0];
+  if (v.used) return res.status(400).json({ error: 'Code already used' });
+  if (new Date(v.expires_at) < new Date()) return res.status(400).json({ error: 'Code expired' });
+
+  // Verify ownership (payload uid matches logged in user)
+  if (v.payload?.uid !== req.user.uid) return res.status(403).json({ error: 'Unauthorized verification' });
+
+  if (String(v.code) !== String(code)) {
+    await pool.query(`UPDATE verifications SET attempts = attempts + 1 WHERE id=$1`, [verificationId]);
+    return res.status(401).json({ error: 'Invalid code' });
+  }
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  await pool.query(`UPDATE users SET password_hash=$1 WHERE id=$2`, [hash, req.user.uid]);
+  await pool.query(`UPDATE verifications SET used=true WHERE id=$1`, [verificationId]);
+
   res.json({ ok: true });
 });
 
