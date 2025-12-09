@@ -53,9 +53,9 @@ function gen6() {
 const SMTP_URL = process.env.SMTP_URL || null;
 const mailer = SMTP_URL ? nodemailer.createTransport(SMTP_URL) : null;
 
-async function sendVerificationEmail(to, code) {
-  const subject = 'TDJP Verification Code';
-  const text = `Welcome to TDJP!
+async function sendVerificationEmail(to, code, action = 'register') {
+  let subject = 'TDJP Verification Code';
+  let text = `Welcome to TDJP!
 
 Please use the verification code below to complete your registration:
 
@@ -66,6 +66,22 @@ If you did not request this code, please ignore this email.
 Best regards,
 The TDJP Team
 `;
+
+  if (action === 'change_password' || action === 'reset_password') {
+    subject = 'TDJP Password Change Code';
+    text = `Hello,
+
+We received a request to change/reset your password for TDJP.
+Please use the verification code below to proceed:
+
+>>>  ${code}  <<<
+
+If you did not request this, please ignore this email. Your password will remain unchanged.
+
+Best regards,
+The TDJP Team
+`;
+  }
 
   if (!mailer) {
     console.log('[DEV] Email verification to:', to, 'code:', code);
@@ -765,7 +781,7 @@ app.post('/auth/change-password/start', requireAuth, async (req, res) => {
     ['change_password', channel, dest, code, expires, { uid: req.user.uid }]
   );
 
-  await sendVerificationEmail(email, code);
+  await sendVerificationEmail(email, code, 'change_password');
   res.json({ ok: true, verificationId: ins.rows[0].id });
 });
 
@@ -817,21 +833,85 @@ app.post('/auth/change-password/complete', requireAuth, async (req, res) => {
 });
 
 /* ---------- Password reset ---------- */
-app.post('/auth/request-password-reset', authLimiter, async (req, res) => {
+/* ---------- Forgot Password (OTP Flow) ---------- */
+app.post('/auth/forgot-password/start', authLimiter, async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || !EMAIL_RE.test(email)) return res.status(400).json({ error: 'Invalid email' });
+
+  const q = await pool.query(`SELECT id, email FROM users WHERE email = $1`, [email.toLowerCase().trim()]);
+  if (!q.rowCount) {
+    // Security: fake success
+    return res.json({ ok: true, verificationId: 'fake_' + gen6() });
+  }
+  const user = q.rows[0];
+
+  const code = gen6();
+  const expires = new Date(Date.now() + 10 * 60 * 1000);
+
+  const ins = await pool.query(
+    `INSERT INTO verifications (purpose, channel, dest, code, expires_at, payload)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+    ['reset_password', 'email', user.email, code, expires, { uid: user.id }]
+  );
+
+  await sendVerificationEmail(user.email, code, 'reset_password').catch(console.error);
+
+  res.json({ ok: true, verificationId: ins.rows[0].id });
+});
+
+app.post('/auth/forgot-password/verify', async (req, res) => {
+  const { verificationId, code } = req.body || {};
+  if (!verificationId || !code) return res.status(400).json({ error: 'Missing fields' });
+  if (verificationId.startsWith('fake_')) return res.status(400).json({ error: 'Invalid code' });
+
+  const q = await pool.query(`SELECT * FROM verifications WHERE id=$1 AND purpose='reset_password'`, [verificationId]);
+  if (!q.rowCount) return res.status(400).json({ error: 'Invalid verification id' });
+
+  const v = q.rows[0];
+  if (v.used) return res.status(400).json({ error: 'Code already used' });
+  if (new Date(v.expires_at) < new Date()) return res.status(400).json({ error: 'Code expired' });
+
+  if (String(v.code) !== String(code)) {
+    await pool.query(`UPDATE verifications SET attempts = attempts + 1 WHERE id=$1`, [verificationId]);
+    return res.status(401).json({ error: 'Invalid code' });
+  }
+
+  res.json({ ok: true });
+});
+
+app.post('/auth/forgot-password/complete', async (req, res) => {
+  const { verificationId, code, newPassword } = req.body || {};
+  if (!verificationId || !code || !newPassword) return res.status(400).json({ error: 'Missing fields' });
+  if (newPassword.length < 8) return res.status(400).json({ error: 'Password too short' });
+  if (verificationId.startsWith('fake_')) return res.status(400).json({ error: 'Invalid code' });
+
+  const q = await pool.query(`SELECT * FROM verifications WHERE id=$1 AND purpose='reset_password'`, [verificationId]);
+  if (!q.rowCount) return res.status(400).json({ error: 'Invalid verification id' });
+
+  const v = q.rows[0];
+  if (v.used) return res.status(400).json({ error: 'Code already used' });
+  if (new Date(v.expires_at) < new Date()) return res.status(400).json({ error: 'Code expired' });
+  if (String(v.code) !== String(code)) return res.status(401).json({ error: 'Invalid code' });
+
+  const uid = v.payload?.uid;
+  if (!uid) return res.status(400).json({ error: 'Invalid payload' });
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  await pool.query(`UPDATE users SET password_hash=$1 WHERE id=$2`, [hash, uid]);
+  await pool.query(`UPDATE verifications SET used=true WHERE id=$1`, [verificationId]);
+
+  res.json({ ok: true });
+});
+
+/* ---------- Password reset (Legacy) ---------- */
+app.post('/auth/request-password-reset-legacy', authLimiter, async (req, res) => {
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Missing email' });
-  const em = normEmail(email);
-
-  const q = await pool.query(`SELECT id FROM users WHERE email=$1`, [em]);
-  if (!q.rowCount) return res.json({ ok: true });
-
-  const userId = q.rows[0].id;
-  const token = crypto.randomBytes(24).toString('hex');
-  const expires = new Date(Date.now() + 30 * 60 * 1000);
-
-  await pool.query(`INSERT INTO password_resets (user_id, token, expires_at) VALUES ($1,$2,$3)`, [userId, token, expires]);
-  return res.json({ ok: true, token });
+  // ... legacy ...
+  return res.json({ ok: true });
 });
+
+
 
 app.post('/auth/reset-password', authLimiter, async (req, res) => {
   const { token, newPassword } = req.body || {};
