@@ -287,6 +287,7 @@ export default function EditUserScreen() {
         try {
             await adminUpdateUser(editUser.id, {
                 // We send current state fields to ensure they are saved if edited
+                email, // Crtitical: Send email to prevent 'null' update if backend defaults missing fields to null
                 firstName, lastName, phone: localPhone?.replace(dial, '')?.trim(), // Basic phone logic needs care, assume unchanged or just use partial
                 country: countryValue,
                 club: isCoach ? club : null,
