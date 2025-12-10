@@ -678,7 +678,7 @@ app.post('/auth/login', authLimiter, async (req, res) => {
 
     const q = await pool.query(
       `SELECT id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
-              judge_level, brevet_level, avatar_url, role, is_admin, password_hash
+              judge_level, brevet_level, avatar_url, role, is_admin, password_hash, profile_status
          FROM users WHERE email=$1`,
       [email]
     );
@@ -696,7 +696,8 @@ app.post('/auth/login', authLimiter, async (req, res) => {
         phone: u.phone, country: u.country, club: u.club,
         isCoach: u.is_coach, isJudge: u.is_judge,
         judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
-        avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin
+        avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin,
+        profileStatus: u.profile_status
       },
       token
     });
