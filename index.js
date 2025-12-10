@@ -708,7 +708,7 @@ app.post('/auth/login', authLimiter, async (req, res) => {
 app.get('/me', requireAuth, async (req, res) => {
   const q = await pool.query(
     `SELECT id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
-            judge_level, brevet_level, avatar_url, role, is_admin, created_at
+            judge_level, brevet_level, avatar_url, role, is_admin, created_at, profile_status
        FROM users WHERE id=$1`, [req.user.uid]);
   if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
   const u = q.rows[0];
@@ -719,7 +719,8 @@ app.get('/me', requireAuth, async (req, res) => {
       phone: u.phone, country: u.country, club: u.club,
       isCoach: u.is_coach, isJudge: u.is_judge,
       judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
-      avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin, createdAt: u.created_at
+      avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin, createdAt: u.created_at,
+      profileStatus: u.profile_status
     }
   });
 });
@@ -741,6 +742,24 @@ app.put('/me', requireAuth, async (req, res) => {
         if (!BREVET_LEVELS.includes(String(brevetLevel))) return res.status(400).json({ error: 'Brevet level required (1/2/3/4)' });
       }
     }
+
+    // Get current user data to check for changes
+    const currentQ = await pool.query(`SELECT * FROM users WHERE id=$1`, [req.user.uid]);
+    const current = currentQ.rows[0];
+    let newStatus = current.profile_status;
+
+    // Critical fields that trigger pending status
+    const criticalFieldsChanged =
+      (isCoach !== undefined && isCoach !== current.is_coach) ||
+      (isJudge !== undefined && isJudge !== current.is_judge) ||
+      (club !== undefined && club !== current.club) ||
+      (judgeLevel !== undefined && judgeLevel !== current.judge_level) ||
+      (brevetLevel !== undefined && String(brevetLevel) !== current.brevet_level);
+
+    if (criticalFieldsChanged && !current.is_admin) {
+      newStatus = 'pending';
+    }
+
 
     let phone_e164;
     if (phone !== undefined) {
@@ -767,10 +786,11 @@ app.put('/me', requireAuth, async (req, res) => {
           is_judge     = COALESCE($10, is_judge),
           judge_level  = COALESCE($11, judge_level),
           brevet_level = COALESCE($12, brevet_level),
-          avatar_url   = COALESCE($13, avatar_url)
+          avatar_url   = COALESCE($13, avatar_url),
+          profile_status = $14
        WHERE id=$1
        RETURNING id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
-                 judge_level, brevet_level, avatar_url, role, is_admin, created_at`,
+                 judge_level, brevet_level, avatar_url, role, is_admin, created_at, profile_status`,
       [req.user.uid,
       firstName ?? null,
       lastName ?? null,
@@ -783,10 +803,22 @@ app.put('/me', requireAuth, async (req, res) => {
       typeof isJudge === 'boolean' ? isJudge : null,
       judgeLevel ?? null,
       brevetLevel ? String(brevetLevel) : null,
-      avatarUrl ?? null
+      avatarUrl ?? null,
+        newStatus
       ]
     );
     const u = q.rows[0];
+
+    // Notify admins if status became pending
+    if (newStatus === 'pending' && current.profile_status !== 'pending') {
+      const name = (u.first_name && u.last_name) ? `${u.first_name} ${u.last_name}` : (u.full_name || 'User');
+      await notifyAdmins(
+        'משתמש עדכן פרטים',
+        `המשתמש ${name} עדכן פרטי שיפוט/אגודה וממתין לאישור מחדש.`,
+        { type: 'verification', userId: u.id, name }
+      );
+    }
+
     res.json({
       user: {
         id: u.id, email: u.email,
@@ -794,7 +826,8 @@ app.put('/me', requireAuth, async (req, res) => {
         phone: u.phone, country: u.country, club: u.club,
         isCoach: u.is_coach, isJudge: u.is_judge,
         judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
-        avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin, createdAt: u.created_at
+        avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin, createdAt: u.created_at,
+        profileStatus: u.profile_status
       }
     });
   } catch (e) {
