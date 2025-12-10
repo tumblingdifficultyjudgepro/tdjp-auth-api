@@ -530,7 +530,8 @@ app.post('/auth/register/verify', authLimiter, async (req, res) => {
 
     // ** PROFILE STATUS LOGIC **
     // Judges and Coaches default to pending
-    const isPending = !!p.isCoach || !!p.isJudge;
+    // Failsafe: If they have judgeLevel or club, they MUST be pending
+    const isPending = !!p.isCoach || !!p.isJudge || !!p.club || !!p.judgeLevel;
     const profileStatus = isPending ? 'pending' : 'approved';
 
     const ins = await pool.query(
@@ -640,7 +641,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 
     if (isPending) {
       const name = u.full_name || 'New User';
-      await notifyAdmins('משתמש חדש ממתין לאישור', `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`);
+      await notifyAdmins('משתמש חדש ממתין לאישור', `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`, null);
     }
 
     const token = signToken({ uid: u.id });
@@ -1147,6 +1148,38 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     }
   } catch (e) {
     console.error('Admin PATCH error:', e);
+    res.status(500).json({ error: e.message || 'Server error' });
+  }
+});
+
+app.post('/admin/users/:id/reject', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { id } = req.params;
+    // Reject: Set status to rejected, Clear professional fields
+    const q = await pool.query(
+      `UPDATE users
+       SET profile_status = 'rejected',
+           club = NULL,
+           judge_level = NULL,
+           brevet_level = NULL
+       WHERE id = $1
+       RETURNING id, profile_status`,
+      [id]
+    );
+
+    if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
+
+    // Notify user
+    await notifyAdmins('משתמש נדחה', `בקשת המשתמש נדחתה ע"י מנהל.`, null); // Notify admins just for log? Or maybe notify user?
+    // We should probably notify the USER.
+    await pool.query(
+      `INSERT INTO notifications (user_id, title, body) VALUES ($1, $2, $3)`,
+      [id, 'בקשתך נדחתה', 'פרטי השיפוט/אגודה שלך נדחו על ידי המנהל. אנא עדכן פרטים ונסה שוב.']
+    );
+
+    res.json({ ok: true, user: q.rows[0] });
+  } catch (e) {
+    console.error('Admin REJECT error:', e);
     res.status(500).json({ error: e.message || 'Server error' });
   }
 });
