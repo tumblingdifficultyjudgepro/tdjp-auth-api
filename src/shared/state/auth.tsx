@@ -115,7 +115,7 @@ async function apiRegister(body: any) {
 }
 
 async function apiMe() {
-  const r = await apiFetch('/auth/me');
+  const r = await apiFetch('/me');
   return normalizeUser(r.user);
 }
 
