@@ -232,7 +232,10 @@ async function notifyAdmins(title, body) {
   try {
     const admins = await pool.query(`SELECT id FROM users WHERE is_admin = true`);
     for (const admin of admins.rows) {
-      await pool.query(`INSERT INTO notifications (user_id, title, body) VALUES ($1, $2, $3)`, [admin.id, title, body]);
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, body, metadata) VALUES ($1, $2, $3, $4)`,
+        [admin.id, title, body, metadata]
+      );
     }
   } catch (e) {
     console.error('Error notifying admins:', e);
@@ -277,10 +280,12 @@ async function ensureSchema() {
       user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       title text NOT NULL,
       body text NOT NULL,
+      metadata jsonb,
       is_read boolean NOT NULL DEFAULT false,
       created_at timestamptz NOT NULL DEFAULT now()
     );
   `);
+  await pool.query(`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS metadata jsonb;`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);`);
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);`);
 
@@ -547,9 +552,14 @@ app.post('/auth/register/verify', authLimiter, async (req, res) => {
     const u = ins.rows[0];
 
     if (isPending) {
-      const name = u.full_name || 'New User';
-      // Notify admins
-      await notifyAdmins('משתמש חדש ממתין לאישור', `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`);
+      // Use full name + metadata
+      const name = (u.first_name && u.last_name) ? `${u.first_name} ${u.last_name}` : (u.full_name || 'New User');
+
+      await notifyAdmins(
+        'משתמש חדש ממתין לאישור',
+        `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`,
+        { type: 'verification', userId: u.id, name }
+      );
     }
 
     const token = signToken({ uid: u.id });
