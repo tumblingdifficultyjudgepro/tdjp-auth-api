@@ -143,8 +143,11 @@ export default function EditUserScreen() {
     const { adminUpdateUser, adminRejectUser, adminDeleteUser, updateSelf, deleteSelf, user: currentUser } = useAuth();
     const navigation = useNavigation<any>();
     const params = useRoute().params as any;
-    const editUser = params?.user;
     const isSelf = params?.isSelf || false;
+    // Prefer currentUser from context if isSelf, so updates (like profileStatus) reflect immediately
+    const editUser = (isSelf && currentUser) ? currentUser : params?.user;
+
+    const isPending = editUser?.profileStatus === 'pending';
 
     const isRTL = lang === 'he';
 
@@ -169,7 +172,8 @@ export default function EditUserScreen() {
     const [judgeLevel, setJudgeLevel] = useState('');
     const [brevet, setBrevet] = useState('1');
 
-    const [busy, setBusy] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isDeleting, setIsDeleting] = useState(false);
     const [showControls, setShowControls] = useState(false);
     const [changePassVisible, setChangePassVisible] = useState(false);
 
@@ -279,7 +283,7 @@ export default function EditUserScreen() {
     const canApprove = currentUser?.isAdmin && !isSelf && editUser?.profileStatus === 'pending';
 
     const handleApprove = async () => {
-        setBusy(true);
+        setIsSaving(true);
         try {
             await adminUpdateUser(editUser.id, {
                 // We send current state fields to ensure they are saved if edited
@@ -296,7 +300,7 @@ export default function EditUserScreen() {
         } catch (e: any) {
             Alert.alert("Error", e.message);
         } finally {
-            setBusy(false);
+            setIsSaving(false);
         }
     };
 
@@ -310,7 +314,7 @@ export default function EditUserScreen() {
                     text: t(lang, 'auth.editUser.reject'),
                     style: 'destructive',
                     onPress: async () => {
-                        setBusy(true);
+                        setIsSaving(true);
                         try {
                             await adminRejectUser(editUser.id);
                             Alert.alert("Success", t(lang, 'auth.editUser.rejectSuccess'));
@@ -318,7 +322,7 @@ export default function EditUserScreen() {
                         } catch (e: any) {
                             Alert.alert("Error", e.message);
                         } finally {
-                            setBusy(false);
+                            setIsSaving(false);
                         }
                     }
                 }
@@ -326,7 +330,7 @@ export default function EditUserScreen() {
         );
     };
 
-    const isPending = editUser?.profileStatus === 'pending';
+
     const pendingText = isRTL ? 'ממתין לאישור' : 'Pending';
 
 
@@ -338,7 +342,7 @@ export default function EditUserScreen() {
             return;
         }
 
-        setBusy(true);
+        setIsSaving(true);
         try {
             const fullName = `${firstName} ${lastName}`;
 
@@ -398,7 +402,7 @@ export default function EditUserScreen() {
                 onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false }))
             });
         } finally {
-            setBusy(false);
+            setIsSaving(false);
         }
     };
 
@@ -414,28 +418,23 @@ export default function EditUserScreen() {
             onCancel: () => setAlertConfig(prev => ({ ...prev, visible: false })),
             onConfirm: async () => {
                 setAlertConfig(prev => ({ ...prev, visible: false }));
-                setBusy(true);
-                try {
-                    if (isSelf) {
-                        await deleteSelf();
-                        // Logout handled by provider usually, or redirect
-                    } else {
-                        await adminDeleteUser(editUser.id);
-                        navigation.goBack();
+                setIsDeleting(true); // Only disables Delete button visually, but we will block others via prop
+
+                // UX: Fake loading for 2 seconds as requested, then delete
+                setTimeout(async () => {
+                    try {
+                        if (isSelf) {
+                            await deleteSelf();
+                            // Auth provider clears user, App navigator should switch to Guest/Auth stack
+                        } else {
+                            await adminDeleteUser(editUser.id);
+                            navigation.goBack();
+                        }
+                    } catch (e: any) {
+                        setIsDeleting(false);
+                        Alert.alert("Error", e.message);
                     }
-                } catch (e: any) {
-                    setBusy(false);
-                    setTimeout(() => {
-                        setAlertConfig({
-                            visible: true,
-                            title: 'Error',
-                            message: e.message,
-                            type: 'destructive',
-                            confirmLabel: 'OK',
-                            onConfirm: () => setAlertConfig(prev => ({ ...prev, visible: false }))
-                        });
-                    }, 500);
-                }
+                }, 2000);
             }
         });
     };
@@ -654,6 +653,7 @@ export default function EditUserScreen() {
                                                 value={club}
                                                 placeholder="בחר אגודה"
                                                 onPress={() => openModal('club')}
+                                                disabled={!canApprove}
                                                 colors={colors}
                                                 isRTL={isRTL}
                                                 style={{ backgroundColor: 'transparent' }}
@@ -667,6 +667,7 @@ export default function EditUserScreen() {
                                                 value={judgeLevel}
                                                 placeholder="בחר דרגה"
                                                 onPress={() => openModal('level')}
+                                                disabled={!canApprove}
                                                 colors={colors}
                                                 isRTL={isRTL}
                                                 style={{ backgroundColor: 'transparent' }}
@@ -755,23 +756,23 @@ export default function EditUserScreen() {
 
 
                         {
-                            isPending ? (
+                            canApprove ? (
                                 <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
-                                    <TouchableOpacity onPress={handleReject} disabled={busy} style={{ flex: 1 }}>
+                                    <TouchableOpacity onPress={handleReject} disabled={isSaving || isDeleting} style={{ flex: 1 }}>
                                         <View style={[styles.submitBtn, { backgroundColor: '#ef4444' }]}>
-                                            {busy ? (
+                                            {isSaving ? (
                                                 <ActivityIndicator color="white" />
                                             ) : (
                                                 <Text style={styles.submitBtnText}>{t(lang, 'auth.editUser.reject') || 'דחה'}</Text>
                                             )}
                                         </View>
                                     </TouchableOpacity>
-                                    <TouchableOpacity onPress={handleApprove} disabled={busy} style={{ flex: 1 }}>
+                                    <TouchableOpacity onPress={handleApprove} disabled={isSaving || isDeleting} style={{ flex: 1 }}>
                                         <LinearGradient
                                             colors={['#10b981', '#059669']}
                                             style={styles.submitBtn}
                                         >
-                                            {busy ? (
+                                            {isSaving ? (
                                                 <ActivityIndicator color="white" />
                                             ) : (
                                                 <Text style={styles.submitBtnText}>{'אשר'}</Text>
@@ -780,12 +781,12 @@ export default function EditUserScreen() {
                                     </TouchableOpacity>
                                 </View>
                             ) : (
-                                <TouchableOpacity onPress={handleSave} disabled={busy} style={{ marginTop: 20 }}>
+                                <TouchableOpacity onPress={handleSave} disabled={isSaving || isDeleting} style={{ marginTop: 20 }}>
                                     <LinearGradient
                                         colors={['#3b82f6', '#2563eb']}
                                         style={styles.submitBtn}
                                     >
-                                        {busy ? (
+                                        {isSaving ? (
                                             <ActivityIndicator color="white" />
                                         ) : (
                                             <Text style={styles.submitBtnText}>{t(lang, 'auth.editUser.save')}</Text>
@@ -795,12 +796,18 @@ export default function EditUserScreen() {
                             )
                         }
 
-                        <TouchableOpacity onPress={handleDelete} disabled={busy} style={{ marginTop: 24, marginBottom: 40 }}>
+                        <TouchableOpacity onPress={handleDelete} disabled={isSaving || isDeleting} style={{ marginTop: 24, marginBottom: 40 }}>
                             <View style={[styles.roleBtn, { borderColor: '#ef4444', height: 50 }]}>
-                                <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                                <Text style={{ color: '#ef4444', fontSize: 16, fontWeight: '600' }}>
-                                    {t(lang, 'auth.editUser.deleteAccount')}
-                                </Text>
+                                {isDeleting && isSelf ? (
+                                    <ActivityIndicator color="#ef4444" />
+                                ) : (
+                                    <>
+                                        <Ionicons name="trash-outline" size={20} color="#ef4444" />
+                                        <Text style={{ color: '#ef4444', fontSize: 16, fontWeight: '600' }}>
+                                            {t(lang, 'auth.editUser.deleteAccount')}
+                                        </Text>
+                                    </>
+                                )}
                             </View>
                         </TouchableOpacity>
                     </View >

@@ -28,8 +28,8 @@ type AuthContextType = {
 
   adminGetUsers: () => Promise<User[]>;
   adminGetRawUsers: () => Promise<any>;
-  adminUpdateUser: (id: string, data: any) => Promise<User>;
-  adminRejectUser: (id: string) => Promise<User>;
+  adminUpdateUser: (id: string, data: any) => Promise<User | null>;
+  adminRejectUser: (id: string) => Promise<User | null>;
   adminDeleteUser: (id: string) => Promise<void>;
 
   updateSelf: (data: any) => Promise<User>;
@@ -83,6 +83,7 @@ function normalizeUser(u: any): User | null {
     lastName: last,
     fullName: full,
     isAdmin: (u.isAdmin != null ? u.isAdmin : u.is_admin),
+    profileStatus: u.profileStatus || u.profile_status,
     createdAt: u.createdAt || u.created_at,
   };
 }
@@ -223,16 +224,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email?: string, password?: string, remember: boolean = true) => {
-    const { user: u, token } = await apiLogin({ email, password });
+    const { user: initialUser, token } = await apiLogin({ email, password });
+
+    // Critical: Set memory token immediately so subsequent calls (like apiMe) work instantly
+    memoryToken = token;
+
     if (remember) {
       await saveToken(token);
     } else {
-      memoryToken = token;
       // Ensure we don't have a persisted token from before
       await SecureStore.deleteItemAsync('tdjp_token');
     }
-    setUser(u);
-    return u;
+
+    // Safety: Fetch fresh user data from /me to ensure we have all fields (like profileStatus)
+    try {
+      const fullUser = await apiMe();
+      setUser(fullUser);
+      return fullUser;
+    } catch (e) {
+      console.warn('Failed to fetch fresh /me on login, reusing login result', e);
+      setUser(initialUser);
+      return initialUser;
+    }
   };
 
   const register = async (payload: any) => {
