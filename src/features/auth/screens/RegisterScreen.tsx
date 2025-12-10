@@ -577,6 +577,12 @@ export default function RegisterScreen() {
             <Modal visible={showVerification} transparent animationType="slide">
                 <View style={styles.verifyOverlay}>
                     <View style={[styles.verifyContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <TouchableOpacity
+                            onPress={() => setShowVerification(false)}
+                            style={{ position: 'absolute', top: 12, right: 12, zIndex: 10, padding: 4 }}
+                        >
+                            <Ionicons name="close" size={24} color={colors.muted} />
+                        </TouchableOpacity>
 
                         {verifyStep === 'method' && (
                             <View style={{ alignItems: 'center', gap: 20 }}>

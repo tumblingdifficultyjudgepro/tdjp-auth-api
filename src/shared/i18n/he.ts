@@ -104,7 +104,10 @@ const he = {
       deleteConfirmTitle: 'מחיקת חשבון',
       deleteConfirmBody: 'האם את/ה בטוח/ה? פעולה זו אינה הפיכה.',
       deleteConfirmBtn: 'מחק',
-      save: 'שמור'
+      save: 'שמור',
+      reject: 'דחה בקשה',
+      rejectConfirm: 'האם לדחות את המשתמש? פרטי האגודה/שיפוט יאופסו.',
+      rejectSuccess: 'המשתמש נדחה בהצלחה'
     }
   },
 

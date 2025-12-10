@@ -140,7 +140,7 @@ const RoleButton = ({ label, checked, onPress, colors }: any) => (
 export default function EditUserScreen() {
     const { colors } = useAppTheme();
     const { lang } = useLang();
-    const { adminUpdateUser, adminDeleteUser, updateSelf, deleteSelf } = useAuth();
+    const { adminUpdateUser, adminRejectUser, adminDeleteUser, updateSelf, deleteSelf, user: currentUser } = useAuth();
     const navigation = useNavigation<any>();
     const params = useRoute().params as any;
     const editUser = params?.user;
@@ -276,24 +276,60 @@ export default function EditUserScreen() {
         setShowControls(false);
     };
 
-    const { user } = useAuth();
-    const canApprove = user?.isAdmin && !isSelf && editUser?.profileStatus === 'pending';
-    const isPending = editUser?.profileStatus === 'pending';
-    const pendingText = isRTL ? 'ממתין לאישור' : 'Pending';
+    const canApprove = currentUser?.isAdmin && !isSelf && editUser?.profileStatus === 'pending';
 
     const handleApprove = async () => {
+        setBusy(true);
         try {
-            setBusy(true);
-            await adminUpdateUser(editUser.id, { profileStatus: 'approved' });
-            Alert.alert(isRTL ? 'הצלחה' : 'Success', isRTL ? 'המשתמש אושר בהצלחה' : 'User approved successfully', [
-                { text: 'OK', onPress: () => navigation.goBack() }
-            ]);
-        } catch (e) {
-            Alert.alert(isRTL ? 'שגיאה' : 'Error', isRTL ? 'אישור משתמש נכשל' : 'Failed to approve user');
+            await adminUpdateUser(editUser.id, {
+                // We send current state fields to ensure they are saved if edited
+                firstName, lastName, phone: localPhone?.replace(dial, '')?.trim(), // Basic phone logic needs care, assume unchanged or just use partial
+                country: countryValue,
+                club: isCoach ? club : null,
+                isCoach, isJudge,
+                judgeLevel: isJudge ? judgeLevel : null,
+                brevetLevel: isJudge && judgeLevel === 'בינלאומי' ? brevet : null,
+                profileStatus: 'approved'
+            });
+            Alert.alert("Success", "User approved");
+            navigation.goBack();
+        } catch (e: any) {
+            Alert.alert("Error", e.message);
         } finally {
             setBusy(false);
         }
     };
+
+    const handleReject = async () => {
+        Alert.alert(
+            t(lang, 'auth.editUser.reject'),
+            t(lang, 'auth.editUser.rejectConfirm'),
+            [
+                { text: t(lang, 'auth.errors.cancel'), style: 'cancel' },
+                {
+                    text: t(lang, 'auth.editUser.reject'),
+                    style: 'destructive',
+                    onPress: async () => {
+                        setBusy(true);
+                        try {
+                            await adminRejectUser(editUser.id);
+                            Alert.alert("Success", t(lang, 'auth.editUser.rejectSuccess'));
+                            navigation.goBack();
+                        } catch (e: any) {
+                            Alert.alert("Error", e.message);
+                        } finally {
+                            setBusy(false);
+                        }
+                    }
+                }
+            ]
+        );
+    };
+
+    const isPending = editUser?.profileStatus === 'pending';
+    const pendingText = isRTL ? 'ממתין לאישור' : 'Pending';
+
+
 
     const handleSave = async () => {
         // Validation
@@ -617,7 +653,7 @@ export default function EditUserScreen() {
                                                 label={t(lang, 'auth.club')}
                                                 value={club}
                                                 placeholder="בחר אגודה"
-                                                disabled={true}
+                                                onPress={() => openModal('club')}
                                                 colors={colors}
                                                 isRTL={isRTL}
                                                 style={{ backgroundColor: 'transparent' }}
@@ -630,7 +666,7 @@ export default function EditUserScreen() {
                                                 label={t(lang, 'auth.judgeLevel')}
                                                 value={judgeLevel}
                                                 placeholder="בחר דרגה"
-                                                disabled={true}
+                                                onPress={() => openModal('level')}
                                                 colors={colors}
                                                 isRTL={isRTL}
                                                 style={{ backgroundColor: 'transparent' }}
@@ -718,18 +754,46 @@ export default function EditUserScreen() {
                         )}
 
 
-                        <TouchableOpacity onPress={handleSave} disabled={busy} style={{ marginTop: 20 }}>
-                            <LinearGradient
-                                colors={['#3b82f6', '#2563eb']}
-                                style={styles.submitBtn}
-                            >
-                                {busy ? (
-                                    <ActivityIndicator color="white" />
-                                ) : (
-                                    <Text style={styles.submitBtnText}>{t(lang, 'auth.editUser.save')}</Text>
-                                )}
-                            </LinearGradient>
-                        </TouchableOpacity>
+                        {
+                            isPending ? (
+                                <View style={{ flexDirection: 'row', gap: 12, marginTop: 20 }}>
+                                    <TouchableOpacity onPress={handleReject} disabled={busy} style={{ flex: 1 }}>
+                                        <View style={[styles.submitBtn, { backgroundColor: '#ef4444' }]}>
+                                            {busy ? (
+                                                <ActivityIndicator color="white" />
+                                            ) : (
+                                                <Text style={styles.submitBtnText}>{t(lang, 'auth.editUser.reject') || 'דחה'}</Text>
+                                            )}
+                                        </View>
+                                    </TouchableOpacity>
+                                    <TouchableOpacity onPress={handleApprove} disabled={busy} style={{ flex: 1 }}>
+                                        <LinearGradient
+                                            colors={['#10b981', '#059669']}
+                                            style={styles.submitBtn}
+                                        >
+                                            {busy ? (
+                                                <ActivityIndicator color="white" />
+                                            ) : (
+                                                <Text style={styles.submitBtnText}>{'אשר'}</Text>
+                                            )}
+                                        </LinearGradient>
+                                    </TouchableOpacity>
+                                </View>
+                            ) : (
+                                <TouchableOpacity onPress={handleSave} disabled={busy} style={{ marginTop: 20 }}>
+                                    <LinearGradient
+                                        colors={['#3b82f6', '#2563eb']}
+                                        style={styles.submitBtn}
+                                    >
+                                        {busy ? (
+                                            <ActivityIndicator color="white" />
+                                        ) : (
+                                            <Text style={styles.submitBtnText}>{t(lang, 'auth.editUser.save')}</Text>
+                                        )}
+                                    </LinearGradient>
+                                </TouchableOpacity>
+                            )
+                        }
 
                         <TouchableOpacity onPress={handleDelete} disabled={busy} style={{ marginTop: 24, marginBottom: 40 }}>
                             <View style={[styles.roleBtn, { borderColor: '#ef4444', height: 50 }]}>
@@ -739,7 +803,7 @@ export default function EditUserScreen() {
                                 </Text>
                             </View>
                         </TouchableOpacity>
-                    </View>
+                    </View >
                 </ScrollView >
             </KeyboardAvoidingView >
 

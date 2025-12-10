@@ -29,6 +29,7 @@ type AuthContextType = {
   adminGetUsers: () => Promise<User[]>;
   adminGetRawUsers: () => Promise<any>;
   adminUpdateUser: (id: string, data: any) => Promise<User>;
+  adminRejectUser: (id: string) => Promise<User>;
   adminDeleteUser: (id: string) => Promise<void>;
 
   updateSelf: (data: any) => Promise<User>;
@@ -151,6 +152,12 @@ async function apiAdminDeleteUser(id: string) {
   await apiFetch(`/admin/users/${id}`, { method: 'DELETE' });
 }
 
+async function apiAdminRejectUser(id: string) {
+  console.log(`Rejecting user ${id}`);
+  const r = await apiFetch(`/admin/users/${id}/reject`, { method: 'POST' });
+  return normalizeUser(r.user);
+}
+
 async function apiUpdateSelf(data: any) {
   const r = await apiFetch('/me', { method: 'PUT', body: data });
   const u = normalizeUser(r.user);
@@ -255,6 +262,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       adminGetUsers: apiAdminGetUsers,
       adminGetRawUsers: apiAdminGetRawUsers,
       adminUpdateUser: apiAdminUpdateUser,
+      adminRejectUser: apiAdminRejectUser,
       adminDeleteUser: apiAdminDeleteUser,
       updateSelf: async (d) => { const u = await apiUpdateSelf(d); setUser(u); return u; },
       deleteSelf: async () => { await apiDeleteSelf(); setUser(null); },
