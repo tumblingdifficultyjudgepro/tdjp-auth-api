@@ -10,10 +10,10 @@ const he = {
   },
 
   home: {
-    greeting: 'ברוכה הבאה',
+    greeting: 'ברוך הבא',
     dailyQuoteTitle: 'הציטוט היומי',
     guestTitle: 'ברוכים הבאים ל-TDJP',
-    guestSubtitle: 'העוזר האישי שלך לשיפוט התעמלות',
+    guestSubtitle: 'העוזר האישי שלך לשיפוט טאמבלינג',
     loginAction: 'התחברות / הרשמה',
     elementOfTheDay: 'האלמנט היומי',
     quickActions: {
@@ -21,26 +21,105 @@ const he = {
       calc: 'מחשבון',
       stats: 'הסטטיסטיקה שלי',
       rules: 'חוקה'
-    }
+    },
   },
 
   auth: {
     login: 'התחברות',
     register: 'הרשמה',
-    logout: 'התנתקות'
+    logout: 'התנתקות',
+    email: 'אימייל',
+    password: 'סיסמה',
+    firstName: 'שם פרטי',
+    lastName: 'שם משפחה',
+    phone: 'טלפון',
+    country: 'מדינה',
+    role: 'תפקיד',
+    judge: 'שופט/ת',
+    coach: 'מאמן/ת',
+    club: 'אגודה',
+    judgeLevel: 'דרגת שיפוט',
+    selectJudgeLevel: 'בחר דרגה',
+    selectCountry: 'בחר מדינה',
+    selectClubPlaceholder: 'בחר אגודה',
+    brevet: 'דרגת ברווה',
+    submitLogin: 'התחבר',
+    submitRegister: 'הרשמה',
+    rememberMe: 'זכור משתמש',
+    noAccount: 'אין לך חשבון? ',
+    registerLink: 'הירשם כאן',
+    placeholders: {
+      email: 'name@example.com',
+      password: '********',
+      name: 'ישראל ישראלי'
+    },
+    forgotPassword: 'שכחתי סיסמה',
+    verifyTitle: 'אימות חשבון',
+    verifySubtitle: 'קוד אימות נשלח לכתובת המייל:',
+    enterCode: 'הזן את קוד האימות',
+    verifyBtn: 'אמת חשבון',
+    verifySuccess: 'האימות בוצע בהצלחה !',
+    errors: {
+      fillAll: 'נא למלא את כל שדות החובה',
+      invalidEmail: 'כתובת מייל לא תקינה',
+      emailTaken: 'כתובת המייל כבר רשומה במערכת',
+      neutralJudge: 'שופט ניטרלי',
+      chooseGallery: 'בחירה מהגלריה',
+      takePhoto: 'צלם תמונה',
+      cancel: 'ביטול',
+      selectAvatar: 'בחר תמונת פרופיל',
+      invalidPhone: 'מספר טלפון לא תקין',
+      phoneTaken: 'מספר הטלפון כבר רשום במערכת',
+      passwordShort: 'הסיסמה חייבת להכיל לפחות 8 תווים',
+      selectClub: 'נא לבחור אגודה',
+      invalidJudgeLevel: 'דרגת שיפוט לא חוקית',
+      selectBrevet: 'נא לבחור דרגת ברווה',
+      invalidCredentials: 'דואר אלקטרוני או סיסמה שגויים',
+      invalidCode: 'קוד האימות שגוי',
+      codeExpired: 'קוד האימות פג תוקף',
+      server: 'שגיאת מערכת, אנא נסה שוב',
+      network: 'שגיאת חיבור, אנא בדוק את האינטרנט'
+    },
+    changePassword: {
+      title: 'שינוי סיסמה',
+      descriptionStart: 'כדי לשנות את הסיסמה שלך, אנו צריכים לוודא שזה אתה.\nנשלח קוד אימות לכתובת המייל הרשומה בחשבון.',
+      sendCode: 'שלח קוד אימות',
+      verifyInstruction: 'הזן את קוד האימות (6 ספרות):',
+      newPasswordPlaceholder: 'סיסמה חדשה',
+      confirmPasswordPlaceholder: 'אימות סיסמה',
+      saveFinish: 'שמור וסיים',
+      btnLabel: 'שנה סיסמה',
+      success: 'הסיסמה שונתה בהצלחה!',
+      codeSentTitle: 'קוד נשלח',
+      codeSentBody: 'קוד אימות נשלח לכתובת המייל שלך',
+      forgotTitle: 'שחזור סיסמה',
+      forgotDesc: 'הזן את האימייל שלך לקבלת קוד אימות',
+      enterEmail: 'הזן אימייל',
+      emailNotFound: 'האימייל לא נמצא במערכת'
+    },
+    editUser: {
+      myAccountTitle: 'החשבון שלי',
+      editUserTitle: 'עריכת משתמש',
+      deleteAccount: 'מחיקת חשבון',
+      deleteConfirmTitle: 'מחיקת חשבון',
+      deleteConfirmBody: 'האם את/ה בטוח/ה? פעולה זו אינה הפיכה.',
+      deleteConfirmBtn: 'מחק',
+      save: 'שמור'
+    }
   },
 
   settings: {
     tariffLocation: {
       title: 'מיקום קבצי טריף',
-      choose: 'בחירת מיקום',
-      change: 'שינוי מיקום',
+      choose: 'בחר מיקום',
+      change: 'שנה מיקום',
       currentPrefix: 'מיקום נוכחי:',
-      notSet: 'לא נבחר עדיין',
+      notSet: 'טרם נבחר',
     },
     tariffAllowIllegalExport: {
       title: 'אפשר ייצוא טריף לפסים לא חוקיים',
     },
+    myAccount: 'ניהול חשבון',
   },
 
   screens: {

@@ -1,51 +1,21 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { t } from '@/shared/i18n';
-import { useLang } from '@/shared/state/lang';
-import HomeScreen from '@/features/home';
-import CalculatorScreen from '@/features/calculator';
-import QuizScreen from '@/features/quiz';
-import FlashcardsScreen from '@/features/flashcards';
-import TariffScreen from '@/features/tariff';
-import ProgressScreen from '@/features/progress';
+import Tabs from '@/app/navigation/Tabs';
+import LoginScreen from '@/features/auth/screens/LoginScreen';
+import RegisterScreen from '@/features/auth/screens/RegisterScreen';
+import AdminUsersScreen from '@/features/admin/screens/AdminUsersScreen';
+import EditUserScreen from '@/features/admin/screens/EditUserScreen';
 
 const Stack = createNativeStackNavigator();
 
 export default function RootStack() {
-  const { lang } = useLang();
-
   return (
-    <Stack.Navigator initialRouteName="Home">
-      <Stack.Screen
-        name="Home"
-        component={HomeScreen}
-        options={{ title: t(lang, 'screens.home') }}
-      />
-      <Stack.Screen
-        name="Calculator"
-        component={CalculatorScreen}
-        options={{ title: t(lang, 'screens.calculator') }}
-      />
-      <Stack.Screen
-        name="Quiz"
-        component={QuizScreen}
-        options={{ title: t(lang, 'screens.quiz') }}
-      />
-      <Stack.Screen
-        name="Flashcards"
-        component={FlashcardsScreen}
-        options={{ title: t(lang, 'screens.flashcards') }}
-      />
-      <Stack.Screen
-        name="Tariff"
-        component={TariffScreen}
-        options={{ title: t(lang, 'screens.tariff') }}
-      />
-      <Stack.Screen
-        name="Progress"
-        component={ProgressScreen}
-        options={{ title: t(lang, 'screens.progress') }}
-      />
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+      <Stack.Screen name="Tabs" component={Tabs} />
+      <Stack.Screen name="Login" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+      <Stack.Screen name="AdminUsers" component={AdminUsersScreen} />
+      <Stack.Screen name="EditUser" component={EditUserScreen} />
     </Stack.Navigator>
   );
 }

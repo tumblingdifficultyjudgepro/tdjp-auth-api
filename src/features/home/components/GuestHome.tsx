@@ -4,31 +4,27 @@ import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
 import { t } from '@/shared/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useAuth } from '@/shared/state/auth';
-
-const { width } = Dimensions.get('window');
+import { useNavigation } from '@react-navigation/native';
 
 export default function GuestHome() {
     const { colors } = useAppTheme();
     const { lang } = useLang();
-    const { login } = useAuth();
+    const navigation = useNavigation<any>();
 
     const isRTL = lang === 'he';
-    const textAlign = isRTL ? 'right' : 'left';
-    const alignItems = isRTL ? 'flex-end' : 'flex-start';
 
     return (
         <View style={styles.container}>
-            <View style={[styles.header, { alignItems }]}>
-                <Text style={[styles.title, { color: colors.text, textAlign }]}>
+            <View style={[styles.header, { alignItems: 'center' }]}>
+                <Text style={[styles.title, { color: colors.text, textAlign: 'center' }]}>
                     {t(lang, 'home.guestTitle')}
                 </Text>
-                <Text style={[styles.subtitle, { color: colors.text, opacity: 0.7, textAlign }]}>
+                <Text style={[styles.subtitle, { color: colors.text, opacity: 0.7, textAlign: 'center' }]}>
                     {t(lang, 'home.guestSubtitle')}
                 </Text>
             </View>
 
-            <TouchableOpacity onPress={login} activeOpacity={0.8}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} activeOpacity={0.8}>
                 <LinearGradient
                     colors={['#FF8C00', '#FF0080']}
                     start={{ x: 0, y: 0 }}

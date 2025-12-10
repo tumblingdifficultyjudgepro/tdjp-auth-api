@@ -546,8 +546,8 @@ export default function TariffScreen() {
 
   const showStickyPassHeader = useMemo(() => {
     if (!activePass) return false
-    return gridOffsetY >= activePassOffset
-  }, [activePass, activePassOffset, gridOffsetY])
+    return gridOffsetY >= activePassY
+  }, [activePass, activePassY, gridOffsetY])
 
   return (
     <View style={[styles.screen, { backgroundColor: colors.bg }]}>
@@ -580,30 +580,7 @@ export default function TariffScreen() {
           onScroll={(y) => setGridOffsetY(y)}
         />
 
-        {/* Sticky Header Overlay - using TariffSlotRow from HEAD for visual consistency in sticky mode */}
-        {isSticky && activePass && (
-          <View style={styles.stickyHeaderContainer}>
-            <View style={[
-              styles.stickyBubble,
-              {
-                backgroundColor: colors.card,
-                borderColor: '#FFC107',
-                shadowColor: '#000'
-              }
-            ]}>
-              <TariffSlotRow
-                items={activePass === 1 ? pass1Display : pass2Display}
-                maxSlots={maxSlots}
-                direction={barDirection}
-                isSymbolMode={elementMode === 'symbol'}
-                symbolFontSize={slotSymbolFontSize}
-                slotHPadding={4}
-                height={56}
-                initialWidths={stickySlotWidths}
-              />
-            </View>
-          </View>
-        )}
+
       </View>
 
       {showStickyPassHeader && activePass && (

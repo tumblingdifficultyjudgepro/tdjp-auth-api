@@ -4,7 +4,7 @@ import { NavigationContainer, DefaultTheme, Theme } from '@react-navigation/nati
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AppThemeProvider, useAppTheme } from '@/shared/theme/theme';
 import { LangProvider, useLang } from '@/shared/state/lang';
-import Tabs from '@/app/navigation/Tabs';
+import RootStack from '@/app/navigation/RootStack';
 
 import { AuthProvider } from '@/shared/state/auth';
 
@@ -28,7 +28,7 @@ function WithNav() {
 
   return (
     <NavigationContainer key={`${lang}-${isRTL ? 'rtl' : 'ltr'}`} theme={navTheme}>
-      <Tabs />
+      <RootStack />
     </NavigationContainer>
   );
 }

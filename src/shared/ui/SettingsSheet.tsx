@@ -5,8 +5,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
 import { useAuth } from '@/shared/state/auth';
+import { Ionicons } from '@expo/vector-icons';
 import { t } from '@/shared/i18n';
 import FeedbackModal from '@/features/feedback/components/FeedbackModal';
+
+import { useNavigation } from '@react-navigation/native';
 
 type Props = { visible: boolean; onClose: () => void };
 
@@ -34,6 +37,7 @@ function formatDirLabel(dir: string | null): string {
 
 export default function SettingsSheet({ visible, onClose }: Props) {
   const { colors, mode, setMode } = useAppTheme();
+  const navigation = useNavigation<any>();
   const { lang, setLang } = useLang();
   const { logout, user } = useAuth();
   const isRTL = lang === 'he';
@@ -83,6 +87,52 @@ export default function SettingsSheet({ visible, onClose }: Props) {
         <View style={styles.backdrop} />
         <View style={[styles.panel, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <Text style={[styles.title, { color: colors.text }]}>{isRTL ? 'הגדרות' : 'Settings'}</Text>
+
+
+          {/* Account & Logout Row - Only for logged in users */}
+          {user && (
+            <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', gap: 12, marginBottom: 16 }}>
+              {/* Account - Takes flex 1 */}
+              <Pressable
+                style={({ pressed }) => [
+                  styles.accountBtn,
+                  {
+                    backgroundColor: colors.tint,
+                    opacity: pressed ? 0.9 : 1,
+                    flex: 1,
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    marginVertical: 0,
+                  }
+                ]}
+                onPress={() => {
+                  onClose();
+                  navigation.navigate('EditUser', { user: user, isSelf: true });
+                }}
+              >
+                <Ionicons name="person-circle" size={24} color="white" />
+                <Text style={styles.accountBtnText}>{t(lang, 'settings.myAccount')}</Text>
+              </Pressable>
+
+              {/* Logout - Fixed width */}
+              <Pressable
+                onPress={() => { logout(); onClose(); }}
+                style={({ pressed }) => [
+                  styles.accountBtn,
+                  {
+                    backgroundColor: colors.card,
+                    borderWidth: 1.5,
+                    borderColor: '#ef4444',
+                    opacity: pressed ? 0.9 : 1,
+                    width: 100,
+                    paddingHorizontal: 0,
+                    marginVertical: 0,
+                  }
+                ]}
+              >
+                <Text style={{ color: '#ef4444', fontWeight: 'bold' }}>{t(lang, 'auth.logout')}</Text>
+              </Pressable>
+            </View>
+          )}
 
           {/* מיקום טריף */}
           <Text style={[styles.section, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
@@ -143,6 +193,28 @@ export default function SettingsSheet({ visible, onClose }: Props) {
 
           {/* --- כפתור פידבק (מעוצב מחדש) --- */}
           <View style={{ marginTop: 24, paddingHorizontal: 4, alignItems: 'center' }}>
+            {/* כפתור אדמין */}
+            {user?.isAdmin && (
+              <Pressable
+                onPress={() => { onClose(); navigation.navigate('AdminUsers'); }}
+                style={({ pressed }) => [
+                  styles.feedbackButton,
+                  {
+                    borderColor: colors.tint,
+                    backgroundColor: pressed ? 'rgba(0,122,255,0.1)' : 'transparent',
+                    marginBottom: 12
+                  }
+                ]}
+              >
+                <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+                  <Text style={[styles.feedbackText, { color: colors.tint }]}>
+                    {isRTL ? 'ניהול משתמשים (Admin)' : 'Admin Panel'}
+                  </Text>
+                  <Ionicons name="people-circle-outline" size={20} color={colors.tint} />
+                </View>
+              </Pressable>
+            )}
+
             <Pressable
               onPress={() => setFeedbackVisible(true)}
               style={({ pressed }) => [
@@ -168,12 +240,6 @@ export default function SettingsSheet({ visible, onClose }: Props) {
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <Text style={styles.closeText}>{isRTL ? 'סגור' : 'Close'}</Text>
             </Pressable>
-
-            {user && (
-              <Pressable onPress={() => { logout(); onClose(); }} style={[styles.closeBtn, { backgroundColor: colors.bg, borderWidth: 1, borderColor: colors.border, marginTop: 10 }]}>
-                <Text style={[styles.closeText, { color: colors.text }]}>{t(lang, 'auth.logout')}</Text>
-              </Pressable>
-            )}
           </View>
         </View>
       </Modal>
@@ -222,5 +288,19 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: 15,
     fontWeight: '700',
+  },
+  accountBtn: {
+    marginVertical: 12,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    width: '100%',
+  },
+  accountBtnText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 16,
   },
 });

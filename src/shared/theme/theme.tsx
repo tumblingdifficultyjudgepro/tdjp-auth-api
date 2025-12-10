@@ -8,6 +8,7 @@ export type Colors = {
   card: string;
   tint: string;
   border: string;
+  muted: string;
 };
 
 type Ctx = {
@@ -17,9 +18,9 @@ type Ctx = {
 };
 
 const PALETTES: Record<Mode, Colors> = {
-  light: { bg: '#ffffff', text: '#111111', card: '#f5f5f5', tint: '#007aff', border: '#007aff' },
-  blue: { bg: '#0e1a2b', text: '#e8f0ff', card: '#15243b', tint: '#4da3ff', border: '#1f3b61' },
-  dark: { bg: '#111111', text: '#f2f2f2', card: '#1b1b1b', tint: '#8ab4ff', border: '#2a2f3a' }
+  light: { bg: '#ffffff', text: '#111111', card: '#f5f5f5', tint: '#007aff', border: '#007aff', muted: '#888888' },
+  blue: { bg: '#0e1a2b', text: '#e8f0ff', card: '#15243b', tint: '#4da3ff', border: '#1f3b61', muted: '#9aa0c3' },
+  dark: { bg: '#111111', text: '#f2f2f2', card: '#1b1b1b', tint: '#8ab4ff', border: '#2a2f3a', muted: '#666666' }
 };
 
 const ThemeCtx = createContext<Ctx | undefined>(undefined);

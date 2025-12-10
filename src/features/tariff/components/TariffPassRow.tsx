@@ -68,6 +68,7 @@ export default function TariffPassRow({
   const accent = colors.text
 
   const layoutRTL = direction === 'rtl';
+  const writing = layoutRTL ? 'rtl' : 'ltr';
 
   const isHebrewTitle = /[\u0590-\u05FF]/.test(label)
 

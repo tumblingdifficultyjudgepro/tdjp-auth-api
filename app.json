@@ -37,7 +37,8 @@
       "expo-font",
       "expo-audio",
       "expo-asset",
-      "expo-video"
+      "expo-video",
+      "expo-secure-store"
     ]
   }
 }

@@ -1,5 +1,5 @@
-import React, { useMemo, useEffect, useRef } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Animated, Easing } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { useAppTheme } from '@/shared/theme/theme';
 import { useLang } from '@/shared/state/lang';
 import { t } from '@/shared/i18n';
@@ -7,94 +7,151 @@ import { useAuth } from '@/shared/state/auth';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import DailyQuote from './DailyQuote';
-import { getDailyElement } from '../services/elementService';
+import { useNotifications } from '@/shared/state/useNotifications';
+import NotificationsModal from '@/shared/ui/NotificationsModal';
+import { useNavigation } from '@react-navigation/native';
 
 export default function UserHome() {
     const { colors } = useAppTheme();
     const { lang } = useLang();
-    const { user } = useAuth();
+    const { user, adminUpdateUser } = useAuth();
+    const [showNotifications, setShowNotifications] = useState(false);
+    const { notifications, unreadCount, markRead } = useNotifications(!!user);
+    const navigation = useNavigation<any>();
 
     const isRTL = lang === 'he';
     const textAlign = isRTL ? 'right' : 'left';
-    const alignItems = isRTL ? 'flex-end' : 'flex-start';
-    const flexDirection = isRTL ? 'row-reverse' : 'row';
 
-    const dailyElement = useMemo(() => getDailyElement(), []);
+    const isPending = user?.profileStatus === 'pending';
+    const isRejected = user?.profileStatus === 'rejected';
 
-    // Standard React Native Animation (Safe & Stable)
-    const scaleAnim = useRef(new Animated.Value(1)).current;
-    const opacityAnim = useRef(new Animated.Value(1)).current;
+    const handleAction = async (action: 'approve' | 'reject' | 'edit', targetUserId: string) => {
+        try {
+            if (action === 'edit') {
+                setShowNotifications(false);
+                // We need to fetch the user object first ideally, but for now let's hope we can navigate or pass id
+                // But AdminUsersScreen passes a User object. 
+                // Let's assume we can navigate to AdminUsers or similar? 
+                // Actually, EditUser expects a User object. We might need to fetch it.
+                // For now, let's navigate to Admin User Management so they can find them.
+                navigation.navigate('AdminUsers');
+                return;
+            }
 
-    useEffect(() => {
-        const pulse = Animated.loop(
-            Animated.parallel([
-                Animated.sequence([
-                    Animated.timing(scaleAnim, {
-                        toValue: 1.1,
-                        duration: 1500,
-                        useNativeDriver: true,
-                        easing: Easing.inOut(Easing.ease),
-                    }),
-                    Animated.timing(scaleAnim, {
-                        toValue: 1,
-                        duration: 1500,
-                        useNativeDriver: true,
-                        easing: Easing.inOut(Easing.ease),
-                    }),
-                ]),
-                Animated.sequence([
-                    Animated.timing(opacityAnim, {
-                        toValue: 0.7,
-                        duration: 1500,
-                        useNativeDriver: true,
-                    }),
-                    Animated.timing(opacityAnim, {
-                        toValue: 1,
-                        duration: 1500,
-                        useNativeDriver: true,
-                    }),
-                ])
-            ])
-        );
-        pulse.start();
-
-        return () => pulse.stop();
-    }, [scaleAnim, opacityAnim]);
+            if (action === 'approve') {
+                await adminUpdateUser(targetUserId, { profileStatus: 'approved' });
+                Alert.alert(isRTL ? 'הצלחה' : 'Success', isRTL ? 'המשתמש אושר' : 'User approved');
+            } else if (action === 'reject') {
+                await adminUpdateUser(targetUserId, { profileStatus: 'rejected' });
+                Alert.alert(isRTL ? 'בוצע' : 'Done', isRTL ? 'המשתמש נדחה' : 'User rejected');
+            }
+        } catch (e) {
+            console.error(e);
+            Alert.alert('Error', 'Action failed');
+        }
+    };
 
     return (
         <ScrollView contentContainerStyle={styles.scroll}>
+            <NotificationsModal
+                visible={showNotifications}
+                onClose={() => setShowNotifications(false)}
+                notifications={notifications}
+                markRead={markRead}
+                onAction={handleAction}
+                colors={colors}
+                isRTL={isRTL}
+            />
 
             {/* Header Section */}
             <View style={[styles.header, { flexDirection: isRTL ? 'row-reverse' : 'row' }]}>
-                <View style={{ flex: 1, alignItems }}>
-                    <Text style={[styles.greeting, { color: colors.text }]}>
-                        {t(lang, 'home.greeting')},
+                <View style={{ flex: 1, paddingHorizontal: 4 }}>
+                    <Text style={[styles.greeting, { color: colors.text, textAlign }]}>
+                        {t(lang, 'home.greeting')}
                     </Text>
-                    <Text style={[styles.username, { color: colors.tint }]}>
-                        {user?.name}
+                    <Text style={[styles.username, { color: colors.tint, textAlign }]}>
+                        {user?.fullName || user?.name}
                     </Text>
                 </View>
-                <View style={styles.rankContainer}>
-                    <LinearGradient
-                        colors={['#4facfe', '#00f2fe'] as const}
-                        style={styles.rankBadge}
-                    >
-                        <Text style={styles.rankText}>Lvl {user?.level}</Text>
-                    </LinearGradient>
-                </View>
-            </View>
 
-            {/* Daily Quote - Moved Up & Redesigned */}
-            <View style={styles.section}>
-                <LinearGradient
-                    colors={['rgba(255,255,255,0.1)', 'rgba(255,255,255,0.05)']}
-                    style={[styles.quoteContainer, { borderColor: colors.border }]}
+                <TouchableOpacity
+                    onPress={() => setShowNotifications(true)}
+                    style={{ position: 'relative', padding: 8 }}
                 >
-                    <DailyQuote />
-                </LinearGradient>
+                    <Ionicons name="notifications-outline" size={28} color={colors.text} />
+                    {unreadCount > 0 && (
+                        <View style={{
+                            position: 'absolute', top: 4, right: 4,
+                            backgroundColor: 'red', borderRadius: 10,
+                            minWidth: 20, height: 20,
+                            justifyContent: 'center', alignItems: 'center'
+                        }}>
+                            <Text style={{ color: 'white', fontSize: 10, fontWeight: 'bold' }}>{unreadCount}</Text>
+                        </View>
+                    )}
+                </TouchableOpacity>
             </View>
 
-            {/* Hero / Element of the Day */}
+            {/* Status Banners */}
+            {isPending && (
+                <View style={{
+                    backgroundColor: '#fffbeb',
+                    padding: 12,
+                    marginHorizontal: 20,
+                    marginBottom: 16,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#fcd34d',
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    alignItems: 'center',
+                    shadowColor: "#f59e0b",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 3
+                }}>
+                    <Ionicons name="alert-circle" size={28} color="#f59e0b" />
+                    <View style={{ flex: 1, marginHorizontal: 12 }}>
+                        <Text style={{ color: '#92400e', fontWeight: 'bold', fontSize: 16, textAlign: isRTL ? 'right' : 'left' }}>
+                            {isRTL ? 'ממתין לאישור' : 'Pending Approval'}
+                        </Text>
+                        <Text style={{ color: '#b45309', fontSize: 14, textAlign: isRTL ? 'right' : 'left', marginTop: 2 }}>
+                            {isRTL ? 'דרגת השיפוט והאגודה שלך ממתינים לאישור מנהל.' : 'Your judge level and club are pending administrator approval.'}
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            {isRejected && (
+                <View style={{
+                    backgroundColor: '#fef2f2',
+                    padding: 12,
+                    marginHorizontal: 20,
+                    marginBottom: 16,
+                    borderRadius: 12,
+                    borderWidth: 1,
+                    borderColor: '#fca5a5',
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    alignItems: 'center',
+                    shadowColor: "#ef4444",
+                    shadowOffset: { width: 0, height: 2 },
+                    shadowOpacity: 0.1,
+                    shadowRadius: 4,
+                    elevation: 3
+                }}>
+                    <Ionicons name="close-circle" size={28} color="#ef4444" />
+                    <View style={{ flex: 1, marginHorizontal: 12 }}>
+                        <Text style={{ color: '#991b1b', fontWeight: 'bold', fontSize: 16, textAlign: isRTL ? 'right' : 'left' }}>
+                            {isRTL ? 'פרופיל נדחה' : 'Profile Rejected'}
+                        </Text>
+                        <Text style={{ color: '#b91c1c', fontSize: 14, textAlign: isRTL ? 'right' : 'left', marginTop: 2 }}>
+                            {isRTL ? 'הבקשה שלך לא אושרה. אנא עדכן פרטים או צור קשר.' : 'Your request was not approved. Please update details or contact support.'}
+                        </Text>
+                    </View>
+                </View>
+            )}
+
+            {/* Daily Quote - Hero Style (Replaces Daily Element) */}
             <View style={styles.section}>
                 <LinearGradient
                     colors={['#667eea', '#764ba2'] as const}
@@ -102,30 +159,16 @@ export default function UserHome() {
                     end={{ x: 1, y: 1 }}
                     style={styles.heroCard}
                 >
-                    <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', justifyContent: 'space-between', width: '100%' }}>
-                        <Text style={styles.heroTitle}>{t(lang, 'home.elementOfTheDay')}</Text>
-                        <View style={styles.valueBadge}>
-                            <Text style={styles.valueText}>{dailyElement.value.toFixed(1)}</Text>
-                        </View>
+                    <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center', width: '100%', marginBottom: 12 }}>
+                        <Ionicons name="bulb" size={24} color="rgba(255,255,255,0.9)" />
+                        <Text style={[styles.heroTitle, { marginHorizontal: 8, flex: 1, textAlign: isRTL ? 'right' : 'left' }]}>
+                            {isRTL ? 'הציטוט היומי' : 'Daily Quote'}
+                        </Text>
                     </View>
 
                     <View style={styles.heroContent}>
-                        <Animated.Text
-                            style={[
-                                styles.elementSymbol,
-                                {
-                                    transform: [{ scale: scaleAnim }],
-                                    opacity: opacityAnim
-                                }
-                            ]}
-                        >
-                            {dailyElement.symbol}
-                        </Animated.Text>
+                        <DailyQuote />
                     </View>
-
-                    <Text style={styles.elementName}>
-                        {lang === 'he' ? dailyElement.name.he : dailyElement.name.en}
-                    </Text>
                 </LinearGradient>
             </View>
 
@@ -190,33 +233,14 @@ const styles = StyleSheet.create({
         fontSize: 28,
         fontWeight: 'bold',
     },
-    rankContainer: {
-        marginLeft: 10,
-    },
-    rankBadge: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 12,
-    },
-    rankText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 14,
-    },
     section: {
         paddingHorizontal: 20,
-    },
-    quoteContainer: {
-        borderRadius: 16,
-        borderWidth: 1,
-        padding: 2,
-        overflow: 'hidden',
     },
     heroCard: {
         borderRadius: 24,
         padding: 24,
         minHeight: 180,
-        justifyContent: 'space-between',
+        justifyContent: 'flex-start', // Changed from space-between
         shadowColor: '#764ba2',
         shadowOffset: { width: 0, height: 8 },
         shadowOpacity: 0.4,
@@ -225,42 +249,17 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     heroTitle: {
-        color: 'rgba(255,255,255,0.8)',
-        fontSize: 14,
+        color: 'rgba(255,255,255,0.9)', // Brighter
+        fontSize: 16, // Larger
         textTransform: 'uppercase',
         fontWeight: 'bold',
-    },
-    valueBadge: {
-        backgroundColor: 'rgba(255,255,255,0.2)',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 12,
-    },
-    valueText: {
-        color: 'white',
-        fontWeight: 'bold',
-        fontSize: 16,
     },
     heroContent: {
         alignItems: 'center',
         justifyContent: 'center',
         paddingVertical: 10,
-        height: 120, // Keep height consistent
         width: '100%',
-    },
-    elementSymbol: {
-        fontSize: 60,
-        color: 'white',
-        fontWeight: 'bold',
-        textShadowColor: 'rgba(255, 255, 255, 0.5)',
-        textShadowOffset: { width: 0, height: 0 },
-        textShadowRadius: 20,
-    },
-    elementName: {
-        color: 'white',
-        fontSize: 20,
-        fontWeight: '600',
-        textAlign: 'center',
+        flex: 1,
     },
     grid: {
         flexDirection: 'row',
