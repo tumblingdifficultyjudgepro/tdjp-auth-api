@@ -78,7 +78,7 @@ const PendingBadge = ({ isRTL, text }: any) => (
     </View>
 );
 
-const SelectButton = ({ label, value, placeholder, onPress, colors, style, isRTL, badge }: any) => (
+const SelectButton = ({ label, value, placeholder, onPress, colors, style, isRTL, badge, disabled }: any) => (
     <View style={[{ gap: 8 }, style]}>
         <View style={{ flexDirection: isRTL ? 'row-reverse' : 'row', alignItems: 'center' }}>
             <Text style={[styles.label, { color: colors.text }]}>{label}</Text>
@@ -86,7 +86,17 @@ const SelectButton = ({ label, value, placeholder, onPress, colors, style, isRTL
         </View>
         <TouchableOpacity
             onPress={onPress}
-            style={[styles.inputContainer, { borderColor: colors.border, backgroundColor: colors.card, justifyContent: 'space-between', flexDirection: isRTL ? 'row-reverse' : 'row' }]}
+            disabled={disabled}
+            style={[
+                styles.inputContainer,
+                {
+                    borderColor: colors.border,
+                    backgroundColor: disabled ? 'transparent' : colors.card,
+                    justifyContent: 'space-between',
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    opacity: disabled ? 0.6 : 1
+                }
+            ]}
         >
             <Text
                 style={{ color: value ? colors.text : colors.muted, fontSize: 16, flex: 1, textAlign: isRTL ? 'right' : 'left' }}
@@ -96,7 +106,7 @@ const SelectButton = ({ label, value, placeholder, onPress, colors, style, isRTL
             >
                 {value || placeholder}
             </Text>
-            <Ionicons name="chevron-down" size={20} color={colors.muted} style={{ marginLeft: isRTL ? 8 : 0, marginRight: isRTL ? 0 : 8 }} />
+            {!disabled && <Ionicons name="chevron-down" size={20} color={colors.muted} style={{ marginLeft: isRTL ? 8 : 0, marginRight: isRTL ? 0 : 8 }} />}
         </TouchableOpacity>
     </View>
 );
@@ -607,10 +617,64 @@ export default function EditUserScreen() {
                                                 label={t(lang, 'auth.club')}
                                                 value={club}
                                                 placeholder="בחר אגודה"
+                                                disabled={true}
+                                                colors={colors}
+                                                isRTL={isRTL}
+                                                style={{ backgroundColor: 'transparent' }}
+                                            />
+                                        )}
+                                    </View>
+                                    <View style={{ flex: 1 }}>
+                                        {(isJudge || (isSelf && editUser?.isJudge)) && (
+                                            <SelectButton
+                                                label={t(lang, 'auth.judgeLevel')}
+                                                value={judgeLevel}
+                                                placeholder="בחר דרגה"
+                                                disabled={true}
+                                                colors={colors}
+                                                isRTL={isRTL}
+                                                style={{ backgroundColor: 'transparent' }}
+                                            />
+                                        )}
+                                    </View>
+                                </View>
+
+                                {/* Brevet Level (Inside Box) */}
+                                {isJudge && judgeLevel === 'בינלאומי' && (
+                                    <View style={{ alignItems: 'flex-end', marginTop: 4 }}>
+                                        <Text style={[styles.label, { color: colors.text, marginBottom: 8, textAlign: isRTL ? 'right' : 'left', width: '100%' }]}>
+                                            {t(lang, 'auth.brevet')}
+                                        </Text>
+                                        <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                                            {[4, 3, 2, 1].map(l => (
+                                                <View
+                                                    key={l}
+                                                    style={[styles.circleBtn, {
+                                                        borderColor: brevet === String(l) ? '#3b82f6' : colors.border,
+                                                        backgroundColor: brevet === String(l) ? '#3b82f6' : 'white',
+                                                        opacity: 0.6
+                                                    }]}
+                                                >
+                                                    <Text style={{ color: brevet === String(l) ? 'white' : colors.text, fontWeight: 'bold' }}>{l}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
+                            </View>
+                        ) : (
+                            /* Regular Layout if NOT pending */
+                            <>
+                                <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
+                                    <View style={{ flex: 1 }}>
+                                        {(isCoach || (isSelf && editUser?.isCoach)) && (
+                                            <SelectButton
+                                                label={t(lang, 'auth.club')}
+                                                value={club}
+                                                placeholder="בחר אגודה"
                                                 onPress={() => openModal('club')}
                                                 colors={colors}
                                                 isRTL={isRTL}
-                                                style={{ backgroundColor: 'white', borderRadius: 8, padding: 4 }}
                                             />
                                         )}
                                     </View>
@@ -623,63 +687,34 @@ export default function EditUserScreen() {
                                                 onPress={() => openModal('level')}
                                                 colors={colors}
                                                 isRTL={isRTL}
-                                                style={{ backgroundColor: 'white', borderRadius: 8, padding: 4 }}
                                             />
                                         )}
                                     </View>
                                 </View>
-                            </View>
-                        ) : (
-                            /* Regular Layout if NOT pending */
-                            <View style={{ flexDirection: 'row', gap: 12, marginTop: 12 }}>
-                                <View style={{ flex: 1 }}>
-                                    {(isCoach || (isSelf && editUser?.isCoach)) && (
-                                        <SelectButton
-                                            label={t(lang, 'auth.club')}
-                                            value={club}
-                                            placeholder="בחר אגודה"
-                                            onPress={() => openModal('club')}
-                                            colors={colors}
-                                            isRTL={isRTL}
-                                        />
-                                    )}
-                                </View>
-                                <View style={{ flex: 1 }}>
-                                    {(isJudge || (isSelf && editUser?.isJudge)) && (
-                                        <SelectButton
-                                            label={t(lang, 'auth.judgeLevel')}
-                                            value={judgeLevel}
-                                            placeholder="בחר דרגה"
-                                            onPress={() => openModal('level')}
-                                            colors={colors}
-                                            isRTL={isRTL}
-                                        />
-                                    )}
-                                </View>
-                            </View>
-                        )}
 
-                        {/* Brevet Level */}
-                        {isJudge && judgeLevel === 'בינלאומי' && (
-                            <View style={{ alignItems: 'flex-end', marginTop: 8 }}>
-                                <Text style={[styles.label, { color: colors.text, marginBottom: 8, textAlign: isRTL ? 'right' : 'left', width: '100%' }]}>
-                                    {t(lang, 'auth.brevet')}
-                                </Text>
-                                <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
-                                    {[4, 3, 2, 1].map(l => (
-                                        <TouchableOpacity
-                                            key={l}
-                                            onPress={() => setBrevet(String(l))}
-                                            style={[styles.circleBtn, {
-                                                borderColor: brevet === String(l) ? '#3b82f6' : colors.border,
-                                                backgroundColor: brevet === String(l) ? '#3b82f6' : 'transparent'
-                                            }]}
-                                        >
-                                            <Text style={{ color: brevet === String(l) ? 'white' : colors.text, fontWeight: 'bold' }}>{l}</Text>
-                                        </TouchableOpacity>
-                                    ))}
-                                </View>
-                            </View>
+                                {/* Brevet Level (Regular) */}
+                                {isJudge && judgeLevel === 'בינלאומי' && (
+                                    <View style={{ alignItems: 'flex-end', marginTop: 8 }}>
+                                        <Text style={[styles.label, { color: colors.text, marginBottom: 8, textAlign: isRTL ? 'right' : 'left', width: '100%' }]}>
+                                            {t(lang, 'auth.brevet')}
+                                        </Text>
+                                        <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'flex-end' }}>
+                                            {[4, 3, 2, 1].map(l => (
+                                                <TouchableOpacity
+                                                    key={l}
+                                                    onPress={() => setBrevet(String(l))}
+                                                    style={[styles.circleBtn, {
+                                                        borderColor: brevet === String(l) ? '#3b82f6' : colors.border,
+                                                        backgroundColor: brevet === String(l) ? '#3b82f6' : 'transparent'
+                                                    }]}
+                                                >
+                                                    <Text style={{ color: brevet === String(l) ? 'white' : colors.text, fontWeight: 'bold' }}>{l}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
+                            </>
                         )}
 
 

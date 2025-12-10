@@ -228,7 +228,7 @@ function sendErr(req, res, code, overrides = {}) {
 
 /* ---------- Schema ---------- */
 /* ---------- Helpers ---------- */
-async function notifyAdmins(title, body) {
+async function notifyAdmins(title, body, metadata) {
   try {
     const admins = await pool.query(`SELECT id FROM users WHERE is_admin = true`);
     for (const admin of admins.rows) {
@@ -640,7 +640,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
 
     if (isPending) {
       const name = u.full_name || 'New User';
-      await notifyAdmins('משתמש חדש ממתין לאישור', `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`);
+      await notifyAdmins('משתמש חדש ממתין לאישור', `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`, null);
     }
 
     const token = signToken({ uid: u.id });

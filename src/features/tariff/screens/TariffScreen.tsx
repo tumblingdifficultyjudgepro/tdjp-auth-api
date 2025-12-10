@@ -646,7 +646,8 @@ export default function TariffScreen() {
 
       <TariffIllegalToast
         visible={showIllegalToast}
-        onDismiss={() => setShowIllegalToast(false)}
+        onHide={() => setShowIllegalToast(false)}
+
       />
 
       <TariffIllegalExportConfirm
