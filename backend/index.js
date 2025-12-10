@@ -1107,20 +1107,20 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
       }
     };
 
-    add('first_name', first_name ?? null);
-    add('last_name', last_name ?? null);
-    add('phone', phone ?? null);
-    add('phone_e164', phone_e164 ?? null);
-    add('country', country ?? null);
-    add('club', club ?? null);
-    add('is_coach', (typeof is_coach === 'boolean') ? is_coach : null);
-    add('is_judge', (typeof is_judge === 'boolean') ? is_judge : null);
-    add('is_admin', (typeof is_admin === 'boolean') ? is_admin : null);
-    add('judge_level', judge_level ?? null);
-    add('brevet_level', brevet_level ?? null);
-    add('avatar_url', avatar_url ?? null);
-    add('email', email ?? null);
-    add('profile_status', profile_status ?? null);
+    add('first_name', first_name);
+    add('last_name', last_name);
+    add('phone', phone);
+    add('phone_e164', phone_e164);
+    add('country', country);
+    add('club', club);
+    if (typeof is_coach === 'boolean') add('is_coach', is_coach);
+    if (typeof is_judge === 'boolean') add('is_judge', is_judge);
+    if (typeof is_admin === 'boolean') add('is_admin', is_admin);
+    add('judge_level', judge_level);
+    add('brevet_level', brevet_level);
+    add('avatar_url', avatar_url);
+    add('email', email);
+    add('profile_status', profile_status);
 
     if (first_name !== undefined || last_name !== undefined) {
       const full_name = toFullName(first_name ?? null, last_name ?? null);
