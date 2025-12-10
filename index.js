@@ -227,6 +227,18 @@ function sendErr(req, res, code, overrides = {}) {
 }
 
 /* ---------- Schema ---------- */
+/* ---------- Helpers ---------- */
+async function notifyAdmins(title, body) {
+  try {
+    const admins = await pool.query(`SELECT id FROM users WHERE is_admin = true`);
+    for (const admin of admins.rows) {
+      await pool.query(`INSERT INTO notifications (user_id, title, body) VALUES ($1, $2, $3)`, [admin.id, title, body]);
+    }
+  } catch (e) {
+    console.error('Error notifying admins:', e);
+  }
+}
+
 async function ensureSchema() {
   await pool.query(`CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
 
@@ -257,6 +269,21 @@ async function ensureSchema() {
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS first_name text;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_name  text;`);
   await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS phone_e164 text;`);
+  await pool.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_status text DEFAULT 'approved';`);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS notifications (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      title text NOT NULL,
+      body text NOT NULL,
+      is_read boolean NOT NULL DEFAULT false,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+  `);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id);`);
+  await pool.query(`CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);`);
+
   await pool.query(`
     UPDATE users
     SET
@@ -495,23 +522,36 @@ app.post('/auth/register/verify', authLimiter, async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(p.password, 10);
+
+    // ** PROFILE STATUS LOGIC **
+    // Judges and Coaches default to pending
+    const isPending = !!p.isCoach || !!p.isJudge;
+    const profileStatus = isPending ? 'pending' : 'approved';
+
     const ins = await pool.query(
       `INSERT INTO users
         (email, password_hash, first_name, last_name, full_name, phone, phone_e164, country, club,
-         is_coach, is_judge, judge_level, brevet_level, avatar_url, role)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         is_coach, is_judge, judge_level, brevet_level, avatar_url, role, profile_status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING id, email, first_name, last_name, phone, country, club,
                  is_coach, is_judge, judge_level, brevet_level, avatar_url,
-                 role, is_admin, created_at`,
+                 role, is_admin, created_at, profile_status`,
       [
         p.email, password_hash, p.firstName || null, p.lastName || null, p.full_name,
         p.phone || null, p.phone_e164 || null, p.country || null, p.club || null,
         !!p.isCoach, !!p.isJudge, p.judgeLevel || null, p.brevetLevel || null,
-        p.avatarUrl || null, p.role
+        p.avatarUrl || null, p.role, profileStatus
       ]
     );
 
     const u = ins.rows[0];
+
+    if (isPending) {
+      const name = u.full_name || 'New User';
+      // Notify admins
+      await notifyAdmins('משתמש חדש ממתין לאישור', `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`);
+    }
+
     const token = signToken({ uid: u.id });
     return res.status(201).json({
       user: {
@@ -521,7 +561,7 @@ app.post('/auth/register/verify', authLimiter, async (req, res) => {
         isCoach: u.is_coach, isJudge: u.is_judge,
         judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
         avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin,
-        createdAt: u.created_at
+        createdAt: u.created_at, profileStatus: u.profile_status
       },
       token
     });
@@ -567,21 +607,32 @@ app.post('/auth/register', authLimiter, async (req, res) => {
     }
 
     const password_hash = await bcrypt.hash(password, 10);
+
+    // ** PROFILE STATUS LOGIC (Legacy) **
+    const isPending = !!isCoach || !!isJudge;
+    const profileStatus = isPending ? 'pending' : 'approved';
+
     const ins = await pool.query(
       `INSERT INTO users
         (email, password_hash, first_name, last_name, full_name, phone, phone_e164, country, club,
-         is_coach, is_judge, judge_level, brevet_level, avatar_url, role)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+         is_coach, is_judge, judge_level, brevet_level, avatar_url, role, profile_status)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING id, email, first_name, last_name, phone, country, club,
                  is_coach, is_judge, judge_level, brevet_level, avatar_url,
-                 role, is_admin, created_at`,
+                 role, is_admin, created_at, profile_status`,
       [email, password_hash, firstName || null, lastName || null, full_name,
         phone || null, phone_e164, country || null, club || null,
         !!isCoach, !!isJudge, judgeLevel || null, brevetLevel ? String(brevetLevel) : null,
-        avatarUrl || null, (isJudge ? 'judge' : (isCoach ? 'coach' : 'user'))]
+        avatarUrl || null, (isJudge ? 'judge' : (isCoach ? 'coach' : 'user')), profileStatus]
     );
 
     const u = ins.rows[0];
+
+    if (isPending) {
+      const name = u.full_name || 'New User';
+      await notifyAdmins('משתמש חדש ממתין לאישור', `המשתמש ${name} נרשם וממתין לאישור דרגה/אגודה.`);
+    }
+
     const token = signToken({ uid: u.id });
     return res.status(201).json({
       user: {
@@ -591,7 +642,7 @@ app.post('/auth/register', authLimiter, async (req, res) => {
         isCoach: u.is_coach, isJudge: u.is_judge,
         judgeLevel: u.judge_level, brevetLevel: u.brevet_level,
         avatarUrl: u.avatar_url, role: u.role, isAdmin: u.is_admin,
-        createdAt: u.created_at
+        createdAt: u.created_at, profileStatus: u.profile_status
       },
       token
     });
@@ -937,7 +988,7 @@ app.get('/admin/users', requireAuth, requireAdmin, async (req, res) => {
   const offset = Math.max(parseInt(req.query.offset || '0', 10), 0);
   const q = await pool.query(
     `SELECT id, email, first_name, last_name, phone, country, club, is_coach, is_judge,
-            judge_level, brevet_level, avatar_url, role, is_admin, created_at
+            judge_level, brevet_level, avatar_url, role, is_admin, created_at, profile_status
        FROM users ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
     [limit, offset]
   );
@@ -971,6 +1022,7 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     const judge_level = b.judge_level ?? b.judgeLevel;
     const brevet_level = b.brevet_level ?? (b.brevetLevel != null ? String(b.brevetLevel) : undefined);
     const avatar_url = b.avatar_url ?? b.avatarUrl;
+    const profile_status = b.profile_status ?? b.profileStatus;
 
     if (country !== undefined && country !== null && !ALLOWED_COUNTRIES.includes(country)) {
       return res.status(400).json({ error: 'Invalid country' });
@@ -1023,6 +1075,7 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     add('brevet_level', brevet_level ?? null);
     add('avatar_url', avatar_url ?? null);
     add('email', email ?? null);
+    add('profile_status', profile_status ?? null);
 
     if (first_name !== undefined || last_name !== undefined) {
       const full_name = toFullName(first_name ?? null, last_name ?? null);
@@ -1042,6 +1095,13 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
     if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
 
     res.json({ user: q.rows[0] });
+
+    // Notify user if approved
+    if (profile_status === 'approved') {
+      const title = 'פרופיל אושר';
+      const body = 'דרגת השיפוט והאגודה שלך אושרו ע"י המערכת.';
+      await pool.query(`INSERT INTO notifications (user_id, title, body) VALUES ($1, $2, $3)`, [req.params.id, title, body]);
+    }
   } catch (e) {
     console.error('Admin PATCH error:', e);
     res.status(500).json({ error: e.message || 'Server error' });
@@ -1062,6 +1122,23 @@ app.put('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
 
 app.delete('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
   await pool.query(`DELETE FROM users WHERE id=$1`, [req.params.id]);
+  res.json({ ok: true });
+});
+
+/* ---------- Notifications API ---------- */
+app.get('/notifications', requireAuth, async (req, res) => {
+  const q = await pool.query(
+    `SELECT * FROM notifications WHERE user_id=$1 ORDER BY created_at DESC LIMIT 50`,
+    [req.user.uid]
+  );
+  res.json(q.rows);
+});
+
+app.post('/notifications/:id/read', requireAuth, async (req, res) => {
+  await pool.query(
+    `UPDATE notifications SET is_read=true WHERE id=$1 AND user_id=$2`,
+    [req.params.id, req.user.uid]
+  );
   res.json({ ok: true });
 });
 
