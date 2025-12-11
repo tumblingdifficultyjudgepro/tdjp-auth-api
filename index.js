@@ -1156,6 +1156,8 @@ app.patch('/admin/users/:id', requireAuth, requireAdmin, async (req, res) => {
 app.post('/admin/users/:id/reject', requireAuth, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
+    console.log('[Admin] Rejecting user:', id);
+
     // Reject: Set status to rejected, Clear professional fields
     const q = await pool.query(
       `UPDATE users
@@ -1170,13 +1172,19 @@ app.post('/admin/users/:id/reject', requireAuth, requireAdmin, async (req, res) 
 
     if (!q.rowCount) return res.status(404).json({ error: 'User not found' });
 
-    // Notify user
-    await notifyAdmins('משתמש נדחה', `בקשת המשתמש נדחתה ע"י מנהל.`, null); // Notify admins just for log? Or maybe notify user?
-    // We should probably notify the USER.
-    await pool.query(
-      `INSERT INTO notifications (user_id, title, body) VALUES ($1, $2, $3)`,
-      [id, 'בקשתך נדחתה', 'פרטי השיפוט/אגודה שלך נדחו על ידי המנהל. אנא עדכן פרטים ונסה שוב.']
-    );
+    // Notifications (Fail-safe)
+    try {
+      // Notify admins
+      await notifyAdmins('משתמש נדחה', `בקשת המשתמש נדחתה ע"י מנהל.`, {});
+
+      // Notify user
+      await pool.query(
+        `INSERT INTO notifications (user_id, title, body, metadata) VALUES ($1, $2, $3, $4)`,
+        [id, 'בקשתך נדחתה', 'פרטי השיפוט/אגודה שלך נדחו על ידי המנהל. אנא עדכן פרטים ונסה שוב.', null]
+      );
+    } catch (err) {
+      console.error('Notification error during rejection (ignoring):', err);
+    }
 
     res.json({ ok: true, user: q.rows[0] });
   } catch (e) {
