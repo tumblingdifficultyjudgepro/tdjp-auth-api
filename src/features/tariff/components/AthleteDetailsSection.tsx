@@ -11,6 +11,7 @@ import {
 import { useAppTheme } from '@/shared/theme/theme'
 import { useLang } from '@/shared/state/lang'
 import { t } from '@/shared/i18n'
+import { CLUBS } from '@/shared/data/clubs'
 
 export type CountryCode = 'ISR' | 'GBR' | 'USA' | 'RUS' | 'UKR' | 'CHN'
 export type Gender = 'F' | 'M' | null
@@ -60,6 +61,7 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
   const { lang } = useLang()
   const isRTL = lang === 'he'
   const [countryPickerVisible, setCountryPickerVisible] = useState(false)
+  const [clubPickerVisible, setClubPickerVisible] = useState(false)
 
   const accent = colors.text
 
@@ -78,8 +80,8 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
     g === 'F'
       ? t(lang, 'tariff.athlete.genderF')
       : g === 'M'
-      ? t(lang, 'tariff.athlete.genderM')
-      : ''
+        ? t(lang, 'tariff.athlete.genderM')
+        : ''
 
   const autoBonusText = t(lang, 'tariff.athlete.autoBonus')
 
@@ -100,8 +102,8 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
     value.track === 'international'
       ? 'row'
       : isRTL
-      ? 'row-reverse'
-      : 'row'
+        ? 'row-reverse'
+        : 'row'
 
   return (
     <View style={styles.container}>
@@ -235,19 +237,29 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
                 color={colors.text}
                 isRTL={isRTL}
               />
-              <TextInput
-                value={value.club}
-                onChangeText={text => setField('club', text)}
+
+              <Pressable
+                onPress={() => setClubPickerVisible(true)}
                 style={[
                   styles.input,
                   {
                     borderColor: colors.border,
-                    color: colors.text,
                     backgroundColor: colors.card,
-                    textAlign: isRTL ? 'right' : 'left',
-                  },
+                    flexDirection: isRTL ? 'row-reverse' : 'row',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    height: 40, // Match typical input height
+                  }
                 ]}
-              />
+              >
+                <Text style={{
+                  color: value.club ? colors.text : colors.border,
+                  textAlign: isRTL ? 'right' : 'left',
+                  flex: 1
+                }} numberOfLines={1}>
+                  {value.club || t(lang, 'tariff.athlete.selectClub') || ''}
+                </Text>
+              </Pressable>
             </View>
           </View>
 
@@ -485,7 +497,70 @@ export default function AthleteDetailsSection({ value, onChange }: Props) {
           setCountryPickerVisible(false)
         }}
       />
+
+      <ClubPickerModal
+        visible={clubPickerVisible}
+        onClose={() => setClubPickerVisible(false)}
+        selected={value.club}
+        onSelect={club => {
+          setField('club', club)
+          setClubPickerVisible(false)
+        }}
+      />
     </View>
+  )
+}
+
+function ClubPickerModal({ visible, selected, onClose, onSelect }: { visible: boolean, selected: string, onClose: () => void, onSelect: (c: string) => void }) {
+  const { colors } = useAppTheme()
+  const { lang } = useLang()
+  const isRTL = lang === 'he'
+  const accent = colors.text
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={[styles.modalContent, { backgroundColor: colors.card, maxHeight: '70%' }]}>
+          <Text style={[styles.modalTitle, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
+            {t(lang, 'tariff.athlete.selectClub') || 'Select Club'}
+          </Text>
+
+          <FlatList
+            data={CLUBS}
+            keyExtractor={item => item}
+            renderItem={({ item }) => {
+              const isSelected = item === selected
+              return (
+                <Pressable
+                  onPress={() => onSelect(item)}
+                  style={({ pressed }) => [
+                    styles.countryRow,
+                    {
+                      flexDirection: isRTL ? 'row-reverse' : 'row',
+                      backgroundColor: isSelected ? accent + '22' : pressed ? colors.card + '33' : 'transparent',
+                    },
+                  ]}
+                >
+                  <Text style={[styles.countryRowLabel, { color: colors.text, textAlign: isRTL ? 'right' : 'left' }]}>
+                    {item}
+                  </Text>
+                </Pressable>
+              )
+            }}
+          />
+
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [
+              styles.modalCloseButton,
+              { backgroundColor: accent, opacity: pressed ? 0.8 : 1, marginTop: 16 },
+            ]}
+          >
+            <Text style={styles.modalCloseText}>{t(lang, 'common.close')}</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
   )
 }
 
@@ -666,8 +741,8 @@ function CountryPickerModal({ visible, selected, onClose, onSelect }: CountryPic
                       backgroundColor: isSelected
                         ? accent + '22'
                         : pressed
-                        ? colors.card + '33'
-                        : 'transparent',
+                          ? colors.card + '33'
+                          : 'transparent',
                     },
                   ]}
                 >
@@ -877,6 +952,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     maxHeight: '70%',
+    width: '100%',
+    maxWidth: 400,
+    alignSelf: 'center',
   },
   modalTitle: {
     fontSize: 16,
@@ -893,13 +971,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   modalCloseButton: {
-    marginTop: 10,
-    borderRadius: 999,
-    paddingVertical: 8,
+    marginTop: 16,
+    borderRadius: 12,
+    height: 48,
     alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
   },
   modalCloseText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 })

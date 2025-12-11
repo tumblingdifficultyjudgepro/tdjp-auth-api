@@ -12,6 +12,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import CustomConfirmDialog from '@/shared/ui/CustomConfirmDialog';
 import ChangePasswordDialog from '@/shared/ui/ChangePasswordDialog';
+import { CLUBS } from '@/shared/data/clubs';
 
 
 const COUNTRIES = [
@@ -23,7 +24,6 @@ const COUNTRIES = [
     { label: '🇨🇳 סין', value: 'סין', dial: '+86' },
 ];
 
-const CLUBS = ['מכבי אקרוג\'ים', 'הפועל תל אביב', 'שער הנגב', 'מכבי קריית אונו', 'הפועל לב השרון'];
 const JUDGE_LEVELS = ['מתחיל', 'מתקדם', 'בינלאומי'];
 const BREVET_LEVELS = ['1', '2', '3', '4'];
 
@@ -140,7 +140,15 @@ const RoleButton = ({ label, checked, onPress, colors }: any) => (
 export default function EditUserScreen() {
     const { colors } = useAppTheme();
     const { lang } = useLang();
-    const { adminUpdateUser, adminRejectUser, adminDeleteUser, updateSelf, deleteSelf, user: currentUser } = useAuth();
+    const {
+        adminUpdateUser,
+        adminRejectUser,
+        adminDeleteUser,
+        updateSelf,
+        deleteSelf,
+        user: currentUser,
+        logout
+    } = useAuth();
     const navigation = useNavigation<any>();
     const params = useRoute().params as any;
     const isSelf = params?.isSelf || false;
@@ -174,6 +182,7 @@ export default function EditUserScreen() {
 
     const [isSaving, setIsSaving] = useState(false);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [successDialog, setSuccessDialog] = useState<{ visible: boolean, title: string, message: string, onConfirm?: () => void }>({ visible: false, title: '', message: '' });
     const [showControls, setShowControls] = useState(false);
     const [changePassVisible, setChangePassVisible] = useState(false);
 
@@ -287,48 +296,81 @@ export default function EditUserScreen() {
         try {
             await adminUpdateUser(editUser.id, {
                 // We send current state fields to ensure they are saved if edited
-                email, // Crtitical: Send email to prevent 'null' update if backend defaults missing fields to null
-                firstName, lastName, phone: localPhone?.replace(dial, '')?.trim(), // Basic phone logic needs care, assume unchanged or just use partial
+                // Loosened logic: Save club/level if they exist in state, to prevent accidental wiping
+                email, // Critical
+                isAdmin: editUser.isAdmin,
+                avatarUrl: editUser.avatarUrl,
+                firstName, lastName, phone: localPhone?.replace(dial, '')?.trim(),
                 country: countryValue,
-                club: isCoach ? club : null,
+                club: club || null,
                 isCoach, isJudge,
-                judgeLevel: isJudge ? judgeLevel : null,
-                brevetLevel: isJudge && judgeLevel === 'בינלאומי' ? brevet : null,
+                judgeLevel: judgeLevel || null,
+                brevetLevel: (judgeLevel === 'בינלאומי' && brevet) ? brevet : null,
                 profileStatus: 'approved'
             });
-            Alert.alert("Success", "User approved");
-            navigation.goBack();
+            setSuccessDialog({
+                visible: true,
+                title: isRTL ? 'הצלחה' : 'Success',
+                message: t(lang, 'auth.editUser.approveSuccess'),
+                onConfirm: () => {
+                    setSuccessDialog(prev => ({ ...prev, visible: false }));
+                    navigation.goBack();
+                }
+            });
         } catch (e: any) {
-            Alert.alert("Error", e.message);
+            setAlertConfig({
+                visible: true,
+                title: 'Error',
+                message: e.message || 'Approve failed',
+                type: 'destructive',
+                confirmLabel: 'OK',
+            });
         } finally {
             setIsSaving(false);
         }
     };
 
     const handleReject = async () => {
-        Alert.alert(
-            t(lang, 'auth.editUser.reject'),
-            t(lang, 'auth.editUser.rejectConfirm'),
-            [
-                { text: t(lang, 'auth.errors.cancel'), style: 'cancel' },
-                {
-                    text: t(lang, 'auth.editUser.reject'),
-                    style: 'destructive',
-                    onPress: async () => {
-                        setIsSaving(true);
-                        try {
-                            await adminRejectUser(editUser.id);
-                            Alert.alert("Success", t(lang, 'auth.editUser.rejectSuccess'));
+        if (!editUser?.id) {
+            Alert.alert("Error", "User ID missing");
+            return;
+        }
+
+        setAlertConfig({
+            visible: true,
+            title: t(lang, 'auth.editUser.reject'),
+            message: t(lang, 'auth.editUser.rejectConfirm'),
+            type: 'destructive',
+            confirmLabel: t(lang, 'auth.editUser.reject'),
+            cancelLabel: t(lang, 'auth.errors.cancel'),
+            cancelTextColor: colors.text,
+            onConfirm: async () => {
+                setAlertConfig(prev => ({ ...prev, visible: false }));
+                setIsSaving(true);
+                try {
+                    await adminRejectUser(editUser.id);
+                    setSuccessDialog({
+                        visible: true,
+                        title: isRTL ? 'הצלחה' : 'Success',
+                        message: t(lang, 'auth.editUser.rejectSuccess'),
+                        onConfirm: () => {
+                            setSuccessDialog(prev => ({ ...prev, visible: false }));
                             navigation.goBack();
-                        } catch (e: any) {
-                            Alert.alert("Error", e.message);
-                        } finally {
-                            setIsSaving(false);
                         }
-                    }
+                    });
+                } catch (e: any) {
+                    setAlertConfig({
+                        visible: true,
+                        title: 'Error',
+                        message: e.message || 'Reject failed',
+                        type: 'destructive',
+                        confirmLabel: 'OK',
+                    });
+                } finally {
+                    setIsSaving(false);
                 }
-            ]
-        );
+            }
+        });
     };
 
 
@@ -377,7 +419,22 @@ export default function EditUserScreen() {
             console.log('Sending update payload:', JSON.stringify(payload, null, 2));
 
             if (isSelf) {
-                await updateSelf(payload);
+                const updatedUser = await updateSelf(payload);
+                if (updatedUser.profileStatus === 'pending') {
+                    setAlertConfig({
+                        visible: true,
+                        title: t(lang, 'auth.editUser.sensitiveChangeTitle'),
+                        message: t(lang, 'auth.editUser.sensitiveChangeBody'),
+                        type: 'info',
+                        confirmLabel: isRTL ? 'אישור' : 'OK',
+                        onConfirm: () => {
+                            setAlertConfig(prev => ({ ...prev, visible: false }));
+                            // Redirect to Home (Tabs) without logging out
+                            navigation.reset({ index: 0, routes: [{ name: 'Tabs' }] });
+                        }
+                    });
+                    return;
+                }
             } else {
                 await adminUpdateUser(editUser.id, payload);
             }
@@ -425,8 +482,29 @@ export default function EditUserScreen() {
                 setTimeout(async () => {
                     try {
                         if (isSelf) {
-                            await deleteSelf();
-                            // Auth provider clears user, App navigator should switch to Guest/Auth stack
+                            // 1. Delete on server (skip logout to keep UI alive)
+                            await deleteSelf(true);
+
+                            // 2. Stop spinner (button stays disabled via isDeleting though)
+                            setIsDeleting(false);
+
+                            // 3. Show Success Dialog
+                            setSuccessDialog({
+                                visible: true,
+                                title: t(lang, 'auth.editUser.accountDeletedTitle'),
+                                message: t(lang, 'auth.editUser.accountDeletedBody'),
+                                onConfirm: () => {
+                                    setSuccessDialog(prev => ({ ...prev, visible: false }));
+                                    logout();
+                                    navigation.reset({
+                                        index: 0,
+                                        routes: [{ name: 'Tabs' }],
+                                    });
+                                }
+                            });
+
+                            // Optional: Auto-redirect after X seconds if user doesn't click
+                            /* setTimeout(() => logout(), 3000); */
                         } else {
                             await adminDeleteUser(editUser.id);
                             navigation.goBack();
@@ -843,6 +921,19 @@ export default function EditUserScreen() {
                     </View>
                 </TouchableOpacity>
             </Modal>
+
+            {/* Success Modal */}
+            <CustomConfirmDialog
+                visible={successDialog.visible}
+                title={successDialog.title}
+                message={successDialog.message}
+                type="success"
+                onConfirm={() => {
+                    if (successDialog.onConfirm) successDialog.onConfirm();
+                    else setSuccessDialog(prev => ({ ...prev, visible: false }));
+                }}
+                confirmLabel={isRTL ? "אישור" : "OK"}
+            />
 
             <CustomConfirmDialog
                 visible={alertConfig.visible}

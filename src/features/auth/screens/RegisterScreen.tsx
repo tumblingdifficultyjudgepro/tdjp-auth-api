@@ -11,6 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
+import { CLUBS } from '@/shared/data/clubs';
+
 const COUNTRIES = [
     { label: '🇮🇱 ישראל', value: 'ישראל', dial: '+972' },
     { label: '🇬🇧 בריטניה', value: 'בריטניה', dial: '+44' },
@@ -20,7 +22,7 @@ const COUNTRIES = [
     { label: '🇨🇳 סין', value: 'סין', dial: '+86' },
 ];
 
-const CLUBS = ['מכבי אקרוג\'ים', 'הפועל תל אביב', 'שער הנגב', 'מכבי קריית אונו', 'הפועל לב השרון'];
+// const CLUBS = ... removed, imported
 const JUDGE_LEVELS = ['מתחיל', 'מתקדם', 'בינלאומי'];
 const BREVET_LEVELS = ['1', '2', '3', '4'];
 
@@ -719,33 +721,72 @@ export default function RegisterScreen() {
                 </View>
             </Modal>
 
-            <Modal visible={modalVisible} transparent animationType="fade">
-                <TouchableOpacity
-                    style={styles.modalOverlay}
-                    activeOpacity={1}
-                    onPress={() => setModalVisible(false)}
-                >
+            <Modal visible={modalVisible} transparent animationType="fade" onRequestClose={() => setModalVisible(false)}>
+                <View style={[styles.modalOverlay, { justifyContent: 'center' }]}>
                     <View style={[styles.modalContent, { backgroundColor: colors.card, borderColor: colors.border }]}>
+                        <Text style={{
+                            fontSize: 20,
+                            fontWeight: 'bold',
+                            textAlign: isRTL ? 'right' : 'left',
+                            marginBottom: 16,
+                            color: colors.text
+                        }}>
+                            {modalType === 'country' ? t(lang, 'auth.selectCountry') :
+                                modalType === 'club' ? (t(lang, 'auth.selectClubPlaceholder') || t(lang, 'tariff.athlete.selectClub')) :
+                                    modalType === 'level' ? t(lang, 'auth.selectJudgeLevel') : ''}
+                        </Text>
+
                         <FlatList
                             data={listData}
                             keyExtractor={(item: any) => modalType === 'country' ? item.value : item}
-                            renderItem={({ item }) => (
-                                <TouchableOpacity
-                                    style={styles.modalItem}
-                                    onPress={() => handleSelect(item)}
-                                >
-                                    {modalType === 'country' ? (
-                                        <Text style={{ color: colors.text, fontSize: 18, textAlign: 'center' }}>
-                                            {item.label}
-                                        </Text>
-                                    ) : (
-                                        <Text style={{ color: colors.text, fontSize: 18, textAlign: 'center' }}>{item}</Text>
-                                    )}
-                                </TouchableOpacity>
-                            )}
+                            renderItem={({ item }) => {
+                                const isSelected = (modalType === 'country' ? countryValue === item.value :
+                                    modalType === 'club' ? club === item :
+                                        modalType === 'level' ? judgeLevel === item : false);
+                                return (
+                                    <TouchableOpacity
+                                        style={[
+                                            styles.modalItem,
+                                            {
+                                                borderBottomColor: colors.border,
+                                                backgroundColor: isSelected ? colors.text + '22' : 'transparent',
+                                                flexDirection: isRTL ? 'row-reverse' : 'row'
+                                            }
+                                        ]}
+                                        onPress={() => handleSelect(item)}
+                                    >
+                                        {modalType === 'country' ? (
+                                            <>
+                                                <Text style={{ fontSize: 24, marginHorizontal: 8 }}>{item.label.split(' ')[0]}</Text>
+                                                <Text style={{ color: colors.text, fontSize: 16, textAlign: isRTL ? 'right' : 'left', flex: 1 }}>
+                                                    {isRTL ? item.value : item.label.split(' ').slice(1).join(' ')}
+                                                </Text>
+                                            </>
+                                        ) : (
+                                            <Text style={{ color: colors.text, fontSize: 16, textAlign: isRTL ? 'right' : 'left', flex: 1 }}>{item}</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            }}
                         />
+
+                        <TouchableOpacity
+                            onPress={() => setModalVisible(false)}
+                            style={{
+                                marginTop: 16,
+                                backgroundColor: colors.text,
+                                borderRadius: 12,
+                                height: 48,
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                            }}
+                        >
+                            <Text style={{ color: colors.bg, fontWeight: 'bold', fontSize: 16 }}>
+                                {t(lang, 'common.close')}
+                            </Text>
+                        </TouchableOpacity>
                     </View>
-                </TouchableOpacity>
+                </View>
             </Modal>
         </SafeAreaView>
     );
@@ -898,10 +939,13 @@ const styles = StyleSheet.create({
         padding: 20
     },
     modalContent: {
-        maxHeight: '50%',
+        maxHeight: '70%',
         borderRadius: 16,
         borderWidth: 1,
-        padding: 16
+        padding: 20,
+        width: '100%',
+        maxWidth: 400,
+        alignSelf: 'center'
     },
     modalItem: {
         paddingVertical: 16,

@@ -44,8 +44,22 @@ export default function CustomConfirmDialog({
                         <Ionicons name={iconName} size={32} color={iconColor} />
                     </View>
 
-                    <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
-                    <Text style={[styles.message, { color: colors.text }]}>{message}</Text>
+                    <Text style={[styles.title, { color: colors.text, width: '100%' }]}>{title}</Text>
+                    {message.split('\n').map((line, index, arr) => (
+                        <Text
+                            key={index}
+                            style={[
+                                styles.message,
+                                {
+                                    color: colors.text,
+                                    marginBottom: index === arr.length - 1 ? 32 : 8,
+                                    width: '100%'
+                                }
+                            ]}
+                        >
+                            {line}
+                        </Text>
+                    ))}
 
                     <View style={styles.actions}>
                         {cancelLabel && onCancel && (
@@ -89,14 +103,16 @@ const styles = StyleSheet.create({
         backgroundColor: 'rgba(0,0,0,0.6)',
         justifyContent: 'center',
         alignItems: 'center',
-        padding: 24,
+        padding: 12,
     },
     dialog: {
         width: '100%',
-        maxWidth: 350,
+        maxWidth: 400,
+        minWidth: '85%',
         borderRadius: 24,
-        paddingVertical: 28,
-        paddingHorizontal: 24,
+        paddingVertical: 32,
+        paddingHorizontal: 8,
+        minHeight: 250,
         alignItems: 'center',
         borderWidth: 1,
         elevation: 24,
@@ -111,7 +127,7 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 20,
+        marginBottom: 16,
         borderWidth: 4,
         borderColor: '#fff',
         shadowColor: '#000',
@@ -121,17 +137,15 @@ const styles = StyleSheet.create({
         elevation: 4,
     },
     title: {
-        fontSize: 20,
+        fontSize: 18,
         fontWeight: '800',
-        marginBottom: 8,
+        marginBottom: 12,
         textAlign: 'center',
     },
     message: {
         fontSize: 16,
-        marginBottom: 32,
         textAlign: 'center',
-        lineHeight: 24,
-        opacity: 0.8
+        opacity: 0.8,
     },
     actions: {
         flexDirection: 'row',

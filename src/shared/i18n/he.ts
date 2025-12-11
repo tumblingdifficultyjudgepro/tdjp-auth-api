@@ -102,12 +102,17 @@ const he = {
       editUserTitle: 'עריכת משתמש',
       deleteAccount: 'מחיקת חשבון',
       deleteConfirmTitle: 'מחיקת חשבון',
-      deleteConfirmBody: 'האם את/ה בטוח/ה? פעולה זו אינה הפיכה.',
+      deleteConfirmBody: 'האם את/ה בטוח/ה?\nפעולה זו אינה הפיכה.',
+      sensitiveChangeTitle: 'שינוי פרטים רגישים',
+      sensitiveChangeBody: 'שינית פרטי שיפוט/אגודה.\nהבקשה הועברה לאישור מנהל.',
       deleteConfirmBtn: 'מחק',
       save: 'שמור',
       reject: 'דחה בקשה',
       rejectConfirm: 'האם לדחות את המשתמש? פרטי האגודה/שיפוט יאופסו.',
-      rejectSuccess: 'המשתמש נדחה בהצלחה'
+      rejectSuccess: 'המשתמש נדחה בהצלחה',
+      approveSuccess: 'המשתמש אושר בהצלחה',
+      accountDeletedTitle: 'החשבון נמחק',
+      accountDeletedBody: 'החשבון נמחק בהצלחה. הנך מועבר לדף הבית...',
     }
   },
 
@@ -265,6 +270,7 @@ const he = {
       countryChina: 'סין',
       countryComingSoon: 'יגיע בקרוב !',
       selectCountry: 'בחר מדינה',
+      selectClub: 'בחר אגודה',
       name: 'שם המתעמל/ת',
       namePlaceholder: 'שם מלא',
       club: 'אגודה',

@@ -33,7 +33,7 @@ type AuthContextType = {
   adminDeleteUser: (id: string) => Promise<void>;
 
   updateSelf: (data: any) => Promise<User>;
-  deleteSelf: () => Promise<void>;
+  deleteSelf: (skipLogout?: boolean) => Promise<void>;
 
   changePasswordStart: () => Promise<string>; // Returns verificationId
   changePasswordVerify: (vid: string, code: string) => Promise<void>;
@@ -67,8 +67,18 @@ async function apiFetch(path: string, { method = 'GET', body, auth = true }: any
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Request failed');
+  const text = await res.text();
+  let data: any = {};
+  try {
+    data = JSON.parse(text);
+  } catch (e) {
+    console.log('API Parse Error:', text); // Log raw output for debugging
+  }
+
+  if (!res.ok) {
+    console.log('API Error:', res.status, data);
+    throw new Error(data.error || `Request failed (${res.status})`);
+  }
   return data;
 }
 
@@ -278,7 +288,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       adminRejectUser: apiAdminRejectUser,
       adminDeleteUser: apiAdminDeleteUser,
       updateSelf: async (d) => { const u = await apiUpdateSelf(d); setUser(u); return u; },
-      deleteSelf: async () => { await apiDeleteSelf(); setUser(null); },
+      deleteSelf: async (skipLogout?: boolean) => { await apiDeleteSelf(); if (!skipLogout) setUser(null); },
       changePasswordStart: apiChangePasswordStart,
       changePasswordVerify: apiChangePasswordVerify,
       changePasswordComplete: apiChangePasswordComplete
