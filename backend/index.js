@@ -1164,7 +1164,10 @@ app.post('/admin/users/:id/reject', requireAuth, requireAdmin, async (req, res) 
        SET profile_status = 'rejected',
            club = NULL,
            judge_level = NULL,
-           brevet_level = NULL
+           brevet_level = NULL,
+           is_coach = false,
+           is_judge = false,
+           role = 'user'
        WHERE id = $1
        RETURNING id, profile_status`,
       [id]
